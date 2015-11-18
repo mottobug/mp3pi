@@ -1,0 +1,73 @@
+<Mp3PiAppLayout>:
+  name: 'Testueberschrift'
+  fullscreen: True
+  
+  TabbedPanel:
+    id: tp
+    do_default_tab: False
+
+    TabbedPanelItem:
+      text: 'Player'
+      BoxLayout:
+        orientation: 'vertical'
+        BoxLayout:
+          Image:
+            id: imageid
+            size_hint: None, None
+            source: 'hr-info.png' 
+            orientation: 'horizontal'
+          BoxLayout:
+            orientation: 'vertical'
+            Button:
+              text: 'HR Info'
+            Button:
+              text: 'HR 3'
+            Button:
+              text: 'Radio BOB'
+            Button:
+              text: '6'
+              on_release: root.change_image()
+            Button:
+              text: '7'
+              on_release: print("release")
+        FloatLayout:
+          Button:
+            text: '1'
+          Slider:
+            pos_hint: {'x':.45, 'y': 0}
+            width: '48dp'
+            orientation: 'vertical'
+
+    TabbedPanelItem:
+      text: 'Settings'
+
+      GridLayout:
+
+        cols: 3
+        spacing: '8dp'
+        size_hint: .5, None
+        height: self.minimum_height
+
+        Label:
+          text: 'Checkbox'
+
+        CheckBox:
+          size_hint_y: None
+          height: '48dp'
+
+        CheckBox:
+          size_hint_y: None
+          height: '48dp'
+
+        Label:
+          text: 'CheckBox with group'
+
+        CheckBox:
+          size_hint_y: None
+          height: '48dp'
+          group: 'g2'
+
+        CheckBox:
+          size_hint_y: None
+          height: '48dp'
+          group: 'g2'
