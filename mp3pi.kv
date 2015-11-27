@@ -35,6 +35,7 @@
             pos_hint: {'x':.45, 'y': 0}
             width: '48dp'
             orientation: 'vertical'
+            on_value: root.change_volume(self.value)
 
     TabbedPanelItem:
       text: 'Settings'
