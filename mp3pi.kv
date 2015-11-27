@@ -1,11 +1,15 @@
 
 #:import sla kivy.adapters.simplelistadapter
 #:import label kivy.uix.label
+#:import ListItemButton kivy.uix.listview.ListItemButton
+#:import ListAdapter kivy.adapters.listadapter.ListAdapter
 
 <Mp3PiAppLayout>:
   name: 'Testueberschrift'
   fullscreen: True
   
+  search_results: search_results_list
+
   TabbedPanel:
     id: tp
     do_default_tab: False
@@ -20,21 +24,10 @@
             size_hint: None, None
             source: 'hr-info.png' 
             orientation: 'horizontal'
-          BoxLayout:
-            id: channellist
-            orientation: 'vertical'
-            Button:
-              text: 'HR Info'
-            Button:
-              text: 'HR 3'
-            Button:
-              text: 'Radio BOB'
-            Button:
-              text: '6'
-              on_release: root.change_image()
-            Button:
-              text: '7'
-              on_release: print("release")
+          ListView:
+            id: search_results_list
+            adapter:
+              ListAdapter(data=[], cls=ListItemButton)
         FloatLayout:
           Button:
             text: '1'

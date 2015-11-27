@@ -6,6 +6,7 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.textinput import TextInput
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from kivy.uix.scrollview import ScrollView
 
 import threading
 import time
@@ -21,6 +22,15 @@ class Mp3PiAppLayout(BoxLayout):
   isPlaying = False
   proc = None
 
+  def __init__(self, **kwargs):
+    super(Mp3PiAppLayout, self).__init__(**kwargs)
+    self.search_results.adapter.data.extend(("HR-Info", "HR3", "Radio Bob"))
+    self.ids['search_results_list'].adapter.bind(on_selection_change=self.change_selection)
+
+  def change_selection(self, args):
+    if args.selection:
+      print(args.selection[0].text)
+      self.change_image(args.selection[0].text)
 
   def start_second_thread(self, l_text):
     if self.isPlaying == 0:
@@ -52,11 +62,6 @@ class Mp3PiAppLayout(BoxLayout):
     print(self.ids.imageid.source)
     self.ids.imageid.source = "bob.jpg"
     self.start_second_thread("lala")
-
-    channellistBoxLayout = self.ids.channellist;
-    b = Button(text="Hi")
-    channellistBoxLayout.add_widget(b)
-
     pass
 
 class Mp3PiApp(App):
@@ -67,6 +72,8 @@ class Mp3PiApp(App):
         self.root.stop.set()
 
     def build(self):
+#        print(self)
+#        self.search_results_list.adapter.data.extend([1], [2])
         return Mp3PiAppLayout()
 
 if __name__ == "__main__":
