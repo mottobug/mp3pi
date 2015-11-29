@@ -31,6 +31,16 @@ def set_mixer(name, args, kwargs):
     volume = int(args)
     mixer.setvolume(volume, channel)
 
+def get_mixer(name, kwargs):
+    try:
+        mixer = alsaaudio.Mixer(name, **kwargs)
+    except alsaaudio.ALSAAudioError:
+        print("No such mixer")
+        sys.exit(1)
+    volumes = mixer.getvolume()
+    return(volumes[0])
+
+
 class Mp3PiAppLayout(BoxLayout):
   
   stop = threading.Event()
@@ -41,6 +51,7 @@ class Mp3PiAppLayout(BoxLayout):
     super(Mp3PiAppLayout, self).__init__(**kwargs)
     self.search_results.adapter.data.extend(("HR-Info", "HR3", "Radio Bob"))
     self.ids['search_results_list'].adapter.bind(on_selection_change=self.change_selection)
+    self.ids.volume_slider.value = get_mixer("Master", {})
 
   def change_volume(self, args):
 #    os.system("amixer set Master %s%%" % int(args))
