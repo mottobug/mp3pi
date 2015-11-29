@@ -56,7 +56,6 @@ class Mp3PiAppLayout(BoxLayout):
   def change_volume(self, args):
 #    os.system("amixer set Master %s%%" % int(args))
     set_mixer("Master", int(args), {})
-    print(int(args))
 
   def change_selection(self, args):
     if args.selection:
