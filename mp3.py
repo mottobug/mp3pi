@@ -28,7 +28,7 @@ class Mp3PiAppLayout(BoxLayout):
     self.ids['search_results_list'].adapter.bind(on_selection_change=self.change_selection)
 
   def change_volume(self, args):
-    os.system("amixer set Master %s" % int(args))
+    print("amixer set Master %s%%" % int(args))
     print(int(args))
 
   def change_selection(self, args):
