@@ -12,9 +12,24 @@ import threading
 import time
 import os
 import subprocess
+import alsaaudio
+import sys
 from signal import SIGTSTP, SIGTERM, SIGABRT
 
 ##from threading import Thread
+
+def set_mixer(name, args, kwargs):
+    # Demonstrates how to set mixer settings
+    try:
+        mixer = alsaaudio.Mixer(name, **kwargs)
+    except alsaaudio.ALSAAudioError:
+        print("No such mixer")
+        sys.exit(1)
+
+    channel = alsaaudio.MIXER_CHANNEL_ALL
+
+    volume = int(args)
+    mixer.setvolume(volume, channel)
 
 class Mp3PiAppLayout(BoxLayout):
   
@@ -28,7 +43,8 @@ class Mp3PiAppLayout(BoxLayout):
     self.ids['search_results_list'].adapter.bind(on_selection_change=self.change_selection)
 
   def change_volume(self, args):
-    os.system("amixer set Master %s" % int(args))
+#    os.system("amixer set Master %s%%" % int(args))
+    set_mixer("Master", int(args), {})
     print(int(args))
 
   def change_selection(self, args):
@@ -62,7 +78,7 @@ class Mp3PiAppLayout(BoxLayout):
     if label == "HR-Info":
       url = "http://hr-mp3-m-hrinfo.akacast.akamaistream.net/7/698/142135/v1/gnl.akacast.akamaistream.net/hr-mp3-m-hrinfo"
     
-    self.proc = subprocess.Popen(["mpg123", url])
+    self.proc = subprocess.Popen(["mpg123", "-o", "pulse", url])
 
     while True:
       if self.stop.is_set():
