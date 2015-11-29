@@ -3,6 +3,14 @@
 #:import label kivy.uix.label
 #:import ListItemButton kivy.uix.listview.ListItemButton
 #:import ListAdapter kivy.adapters.listadapter.ListAdapter
+#:import Factory kivy.factory.Factory
+
+<ListItemButtonTitle@ListItemButton>:
+#  selected_color:   [24.0, 1.0, 0.39, 0.6]
+#  deselected_color: [1.0, 1.0, 1.0, 0.0]
+  font_size: 32
+  size_hint: .9,.1
+  line_height: 1
 
 <Mp3PiAppLayout>:
   name: 'Testueberschrift'
@@ -21,13 +29,17 @@
         BoxLayout:
           Image:
             id: imageid
-            size_hint: None, None
+            #size_hint: None, None
+            size_hint_x: .4
             source: 'hr-info.png' 
             orientation: 'horizontal'
           ListView:
             id: search_results_list
+#            height: 50 
+#            size_hint_y: None
+#            size_hint: 0.9, 0.9
             adapter:
-              ListAdapter(data=[], cls=ListItemButton)
+              ListAdapter(data=[], cls=Factory.ListItemButtonTitle)
         FloatLayout:
           Button:
             text: '1'
