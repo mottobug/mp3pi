@@ -8,10 +8,10 @@
 <ListItemButtonTitle@ListItemButton>:
 #  selected_color:   [24.0, 1.0, 0.39, 0.6]
 #  deselected_color: [1.0, 1.0, 1.0, 0.0]
-  font_size: 20
+  font_size: 30
 #  size_hint: None, None
   size_hint_y: None
-  height: 40
+  height: 60
   line_height: 1
 
 <Mp3PiAppLayout>:
@@ -42,7 +42,9 @@
 #            size_hint: 0.9, 0.9
             adapter:
               ListAdapter(data=[],
-              cls=Factory.ListItemButtonTitle)
+              selection_mode='single',
+              cls=Factory.ListItemButtonTitle,
+              )
         FloatLayout:
           Button:
             text: '1'

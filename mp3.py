@@ -122,7 +122,7 @@ class Mp3PiAppLayout(BoxLayout):
       print(args.selection[0].text)
       print(get_Station(args.selection[0].text))
       self.change_image("url", get_Station(args.selection[0].text))
-      #self.change_image(args.selection[0].text)
+#      self.change_image(args.selection[0].text)
 
   def start_second_thread(self, l_text):
     if self.isPlaying == 0:
