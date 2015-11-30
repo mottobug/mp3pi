@@ -14,12 +14,13 @@ import os
 import subprocess
 import alsaaudio
 import sys
+import json
+import pprint
 from signal import SIGTSTP, SIGTERM, SIGABRT
 
 ##from threading import Thread
 
 def set_mixer(name, args, kwargs):
-    # Demonstrates how to set mixer settings
     try:
         mixer = alsaaudio.Mixer(name, **kwargs)
     except alsaaudio.ALSAAudioError:
@@ -41,6 +42,15 @@ def get_mixer(name, kwargs):
     return(volumes[0])
 
 
+listitems = []
+def get_Stations():
+  with open('json.json') as data_file:    
+    data = json.load(data_file)
+
+  for item in data:
+    listitems.append(item['name'])
+
+
 class Mp3PiAppLayout(BoxLayout):
   
   stop = threading.Event()
@@ -48,8 +58,12 @@ class Mp3PiAppLayout(BoxLayout):
   proc = None
 
   def __init__(self, **kwargs):
+
+		
+
     super(Mp3PiAppLayout, self).__init__(**kwargs)
-    self.search_results.adapter.data.extend(("HR-Info", "HR3", "Radio Bob"))
+    #self.search_results.adapter.data.extend(("HR-Info", "HR3", "Radio Bob"))
+    self.search_results.adapter.data.extend((listitems))
     self.ids['search_results_list'].adapter.bind(on_selection_change=self.change_selection)
     self.ids.volume_slider.value = get_mixer("Master", {})
 
@@ -140,4 +154,5 @@ class Mp3PiApp(App):
     return Mp3PiAppLayout()
 
 if __name__ == "__main__":
+  get_Stations()
   Mp3PiApp().run()
