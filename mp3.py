@@ -86,6 +86,65 @@ def get_Station(name):
 #      print(item['streamURL'])
 
 
+##
+#
+##
+class radioStations():
+
+  user_agent = {'User-agent': 'User-Agent: XBMC Addon Radio'}
+
+  data = []
+
+  def __init__(self):
+    url = "http://radio.de/info/menu/broadcastsofcategory?category=_top"
+    response  = requests.get(url, headers = self.user_agent)
+    #print(response.status_code)
+    self.data = response.json()
+
+  def getStations(self):
+    return(self.data)
+
+#   for item in self.data:
+#     print(item['pictureBaseURL'])
+#     print(item['picture1TransName'])
+#     print(item['name'])
+#     print(item['subdomain'])
+#     print(item['bitrate'])
+#     print(item['id'])
+
+  def getStation(self, id):
+    url = "http://radio.de/info/broadcast/getbroadcastembedded?broadcast=" + id
+
+    response = requests.get(url, headers = self.user_agent)
+    #print(response.status_code)
+    station_data = response.json()
+
+    if "errorCode" in station_data.keys():
+      print("no such entry")
+      return(0)
+
+    return(station_data)
+
+  def getImageUrl(self, id):
+    for item in self.data:
+      if str(item['id']) == str(id):
+        return(item['pictureBaseURL'] + item['picture1Name'])
+
+  def getIdByName(self, name):
+    for item in self.data:
+      if str(item['name']) == name:
+        return(item['id'])
+
+    
+#   print(station_data['link'])
+#   print(station_data['name'])
+#   print(station_data['streamURL'])
+
+#   if "StreamURLs" in station_data.keys():
+#     for item in station_data['streamURLs']:
+#       print(station_item['streamURL'])
+    #print(data['streamURLs'][0]['streamURL'])
+
 
 
 class Mp3PiAppLayout(BoxLayout):
@@ -93,7 +152,6 @@ class Mp3PiAppLayout(BoxLayout):
   stop = threading.Event()
   isPlaying = False
   proc = None
-
 
 #  def args_converter(self, row_index, an_obj):
 #    
@@ -119,10 +177,9 @@ class Mp3PiAppLayout(BoxLayout):
   def change_selection(self, args):
     get_Stations()
     if args.selection:
-      print(args.selection[0].text)
-      print(get_Station(args.selection[0].text))
-      self.change_image("url", get_Station(args.selection[0].text))
-#      self.change_image(args.selection[0].text)
+      self.change_image(args.selection[0].text)
+      self.start_second_thread(get_Station(args.selection[0].text))
+
 
   def start_second_thread(self, l_text):
     if self.isPlaying == 0:
@@ -150,19 +207,8 @@ class Mp3PiAppLayout(BoxLayout):
       print(self.isPlaying)
       time.sleep(1)
 
-  def change_image(self, image, url):
-
-    print(self.ids.imageid.source)
-
-#    if args == "Radio Bob":
-#      self.ids.imageid.source = "bob.jpg"
-#    if args == "HR3":
-#      self.ids.imageid.source = "hr3.jpg"
-#    if args == "hr-info":
-#      self.ids.imageid.source = "hr-info.png"
-
-    self.start_second_thread(url)
-    pass
+  def change_image(self, station_name):
+    self.ids.imageid.source = Stations.getImageUrl(Stations.getIdByName(station_name))    
 
 class Mp3PiApp(App):
 
@@ -192,4 +238,5 @@ class Mp3PiApp(App):
 
 if __name__ == "__main__":
   get_Stations()
+  Stations = radioStations()
   Mp3PiApp().run()

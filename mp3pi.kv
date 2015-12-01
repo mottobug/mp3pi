@@ -1,4 +1,3 @@
-
 #:import sla kivy.adapters.simplelistadapter
 #:import label kivy.uix.label
 #:import ListItemButton kivy.uix.listview.ListItemButton
@@ -29,11 +28,11 @@
       BoxLayout:
         orientation: 'vertical'
         BoxLayout:
-          Image:
+          AsyncImage:
             id: imageid
             #size_hint: None, None
             size_hint_x: .4
-            source: 'hr-info.png' 
+            #source: 'hr-info.png' 
             orientation: 'horizontal'
           ListView:
             id: search_results_list
