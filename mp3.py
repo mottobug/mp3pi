@@ -135,9 +135,6 @@ class radioStations():
 #       print(station_item['streamURL'])
     #print(data['streamURLs'][0]['streamURL'])
 
-
-
-
 class Mp3PiAppLayout(BoxLayout):
   
   stop = threading.Event()
@@ -156,7 +153,6 @@ class Mp3PiAppLayout(BoxLayout):
 
   def __init__(self, **kwargs):
     super(Mp3PiAppLayout, self).__init__(**kwargs)
-    #self.search_results.adapter.data.extend(("HR-Info", "HR3", "Radio Bob"))
     self.search_results.adapter.data.extend((Stations.listitems))
     self.ids['search_results_list'].adapter.bind(on_selection_change=self.change_selection)
     self.ids.volume_slider.value = Alsa.get_mixer("", {})
@@ -231,7 +227,5 @@ class Mp3PiApp(App):
 
 if __name__ == "__main__":
   Alsa = AlsaInterface()
-  #Alsa.list_mixers()
-  #sys.exit(0)
   Stations = radioStations()
   Mp3PiApp().run()
