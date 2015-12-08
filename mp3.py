@@ -21,29 +21,48 @@ from signal import SIGTSTP, SIGTERM, SIGABRT
 
 ##from threading import Thread
 
-user_agent = {'User-agent': 'User-Agent: XBMC Addon Radio'}
+#user_agent = {'User-agent': 'User-Agent: XBMC Addon Radio'}
 
 
-def set_mixer(name, args, kwargs):
-    try:
-        mixer = alsaaudio.Mixer(name, **kwargs)
-    except alsaaudio.ALSAAudioError:
-        print("No such mixer")
-        sys.exit(1)
 
-    channel = alsaaudio.MIXER_CHANNEL_ALL
+class AlsaInterface():
 
-    volume = int(args)
-    mixer.setvolume(volume, channel)
+  mixer = ""
 
-def get_mixer(name, kwargs):
-    try:
-        mixer = alsaaudio.Mixer(name, **kwargs)
-    except alsaaudio.ALSAAudioError:
-        print("No such mixer")
-        sys.exit(1)
-    volumes = mixer.getvolume()
-    return(volumes[0])
+  def __init__(self): # picks first mixer and set as default
+    all_mixers = self.list_mixers()
+    self.mixer = all_mixers[0]
+    print("Setting default mixer to: " + self.mixer)
+
+  def list_mixers(self, **kwargs):
+    return(alsaaudio.mixers(**kwargs))
+    #for m in alsaaudio.mixers(**kwargs):
+      #print("  '%s'" % m)
+
+  def set_mixer(self, name, args, kwargs):
+      if not name:
+        name = self.mixer
+      try:
+          mixer = alsaaudio.Mixer(name, **kwargs)
+      except alsaaudio.ALSAAudioError:
+          print("No such mixer")
+          sys.exit(1)
+
+      channel = alsaaudio.MIXER_CHANNEL_ALL
+
+      volume = int(args)
+      mixer.setvolume(volume, channel)
+
+  def get_mixer(self, name, kwargs):
+      if not name:
+        name = self.mixer    
+      try:
+          mixer = alsaaudio.Mixer(name, **kwargs)
+      except alsaaudio.ALSAAudioError:
+          print("No such mixer")
+          sys.exit(1)
+      volumes = mixer.getvolume()
+      return(volumes[0])
 
 ##
 #
@@ -118,6 +137,7 @@ class radioStations():
 
 
 
+
 class Mp3PiAppLayout(BoxLayout):
   
   stop = threading.Event()
@@ -139,11 +159,11 @@ class Mp3PiAppLayout(BoxLayout):
     #self.search_results.adapter.data.extend(("HR-Info", "HR3", "Radio Bob"))
     self.search_results.adapter.data.extend((Stations.listitems))
     self.ids['search_results_list'].adapter.bind(on_selection_change=self.change_selection)
-    self.ids.volume_slider.value = get_mixer("Master", {})
+    self.ids.volume_slider.value = Alsa.get_mixer("", {})
 
   def change_volume(self, args):
 #    os.system("amixer set Master %s%%" % int(args))
-    set_mixer("Master", int(args), {})
+    Alsa.set_mixer("", int(args), {})
 
   def change_selection(self, args):
     if args.selection:
@@ -210,5 +230,8 @@ class Mp3PiApp(App):
     return Mp3PiAppLayout()
 
 if __name__ == "__main__":
+  Alsa = AlsaInterface()
+  #Alsa.list_mixers()
+  #sys.exit(0)
   Stations = radioStations()
   Mp3PiApp().run()
