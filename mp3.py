@@ -45,47 +45,6 @@ def get_mixer(name, kwargs):
     volumes = mixer.getvolume()
     return(volumes[0])
 
-
-listitems = []
-def get_Stations():
-  json_data = []
-  with open('json.json') as data_file:    
-    json_data = json.load(data_file)
-
-  for item in json_data:
-    listitems.append(item['name'])
-
-def get_Station(name):
-  json_data = []
-  id = 0
-  with open('json.json') as data_file:    
-    json_data = json.load(data_file)
-
-  for item in json_data:
-    if item['name'] == name:
-      id = item['id']
-
-  #
-  url = "http://radio.de/info/broadcast/getbroadcastembedded?broadcast=" + str(id)
-
-  response = requests.get(url, headers = user_agent)
-#  print(response.status_code)
-  data = response.json()
-
-  if "errorCode" in data.keys():
-    print("no such entry")
-    return(0)
-  
-  print(data['link'])
-  print(data['name'])
-  print(data['streamURL'])
-
-  return(data['streamURL'])
-#  if "StreamURLs" in data.keys():
-#    for item in data['streamURLs']:
-#      print(item['streamURL'])
-
-
 ##
 #
 ##
@@ -94,12 +53,18 @@ class radioStations():
   user_agent = {'User-agent': 'User-Agent: XBMC Addon Radio'}
 
   data = []
+  listitems = []
 
   def __init__(self):
     url = "http://radio.de/info/menu/broadcastsofcategory?category=_top"
     response  = requests.get(url, headers = self.user_agent)
     #print(response.status_code)
     self.data = response.json()
+
+    # array for kivy radio list
+    for item in self.data:
+      self.listitems.append(item['name'])    
+
 
   def getStations(self):
     return(self.data)
@@ -135,6 +100,12 @@ class radioStations():
       if str(item['name']) == name:
         return(item['id'])
 
+  def getStreamURLbyName(self, name):
+
+    id = self.getIdByName(name)
+    station_data = self.getStation(str(id))
+
+    return(station_data['streamURL'])
     
 #   print(station_data['link'])
 #   print(station_data['name'])
@@ -166,7 +137,7 @@ class Mp3PiAppLayout(BoxLayout):
   def __init__(self, **kwargs):
     super(Mp3PiAppLayout, self).__init__(**kwargs)
     #self.search_results.adapter.data.extend(("HR-Info", "HR3", "Radio Bob"))
-    self.search_results.adapter.data.extend((listitems))
+    self.search_results.adapter.data.extend((Stations.listitems))
     self.ids['search_results_list'].adapter.bind(on_selection_change=self.change_selection)
     self.ids.volume_slider.value = get_mixer("Master", {})
 
@@ -175,23 +146,26 @@ class Mp3PiAppLayout(BoxLayout):
     set_mixer("Master", int(args), {})
 
   def change_selection(self, args):
-    get_Stations()
     if args.selection:
       self.change_image(args.selection[0].text)
-      self.start_second_thread(get_Station(args.selection[0].text))
-
-
-  def start_second_thread(self, l_text):
-    if self.isPlaying == 0:
-      self.isPlaying = True
-      threading.Thread(target=self.infinite_loop, args=(l_text,)).start()
+      self.stop_second_thread()
+      self.start_second_thread(Stations.getStreamURLbyName(args.selection[0].text))
     else:
+      self.stop_second_thread()
+
+  def stop_second_thread(self):
+    if self.isPlaying == True: # stop playing
       self.isPlaying = False
       if self.proc is not None:
         print("killing %s" % self.proc.pid)
         os.kill(self.proc.pid, SIGTERM)
         self.proc = None
-        self.stop.set()
+        self.stop.set()    
+
+  def start_second_thread(self, l_text):
+    if self.isPlaying == False:
+      self.isPlaying = True
+      threading.Thread(target=self.infinite_loop, args=(l_text,)).start()
       
   def infinite_loop(self, url):
     iteration = 0
@@ -211,7 +185,6 @@ class Mp3PiAppLayout(BoxLayout):
     self.ids.imageid.source = Stations.getImageUrl(Stations.getIdByName(station_name))    
 
 class Mp3PiApp(App):
-
   def build_config(self, config):
     config.setdefaults('General', {'temp_type': "Metric"})
 
@@ -237,6 +210,5 @@ class Mp3PiApp(App):
     return Mp3PiAppLayout()
 
 if __name__ == "__main__":
-  get_Stations()
   Stations = radioStations()
   Mp3PiApp().run()

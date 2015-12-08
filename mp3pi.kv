@@ -33,7 +33,16 @@
             #size_hint: None, None
             size_hint_x: .4
             #source: 'hr-info.png' 
-            orientation: 'horizontal'
+            #orientation: 'horizontal'
+            #pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+            allow_stretch: True
+#            canvas:
+#              Color:
+#                rgba: 0, 1, 0, .5
+#              Rectangle:
+#                pos: self.pos
+#                size: self.size
+
           ListView:
             id: search_results_list
 #            height: 50 
@@ -48,11 +57,18 @@
           Button:
             text: '1'
           Slider:
+            size_hint_x: .1
             id: volume_slider
-            pos_hint: {'x':.45, 'y': 0}
-            width: '48dp'
+            pos_hint: {'x':.90, 'y': 0}
+            #width: '48dp'
             orientation: 'vertical'
             on_value: root.change_volume(self.value)
+#            canvas:
+#              Color:
+#                rgba: 0, 1, 0, .5
+#              Rectangle:
+#                pos: self.pos
+#                size: self.size
 
     TabbedPanelItem:
       text: 'Settings'
