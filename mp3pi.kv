@@ -55,12 +55,21 @@
               cls=Factory.ListItemButtonTitle,
               args_converter=root.args_converter
               )
-        FloatLayout:
+
+        BoxLayout:
+          size_hint_y: None
+          height: 100.0
           Button:
-            text: '1'
+            text: '<<'
+            split_str: ''
           Button:
-            text: "Pause"
+            split_str: ''
+            text: 'Play/Pause'
             on_release: root.pause()
+          Button:
+            split_str: ''
+            text: '>>'
+            bold: True
           Slider:
             size_hint_x: .1
             id: volume_slider
