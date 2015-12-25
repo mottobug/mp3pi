@@ -2,6 +2,7 @@
 #:import label kivy.uix.label
 #:import ListItemButton kivy.uix.listview.ListItemButton
 #:import ListAdapter kivy.adapters.listadapter.ListAdapter
+#:import DictAdapter kivy.adapters.dictadapter.DictAdapter
 #:import Factory kivy.factory.Factory
 
 <ListItemButtonTitle@ListItemButton>:
@@ -52,10 +53,14 @@
               ListAdapter(data=[],
               selection_mode='single',
               cls=Factory.ListItemButtonTitle,
+              args_converter=root.args_converter
               )
         FloatLayout:
           Button:
             text: '1'
+          Button:
+            text: "Pause"
+            on_release: root.pause()
           Slider:
             size_hint_x: .1
             id: volume_slider

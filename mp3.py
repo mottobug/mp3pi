@@ -1,5 +1,7 @@
 from kivy.app import App
 
+from objbrowser import browse
+
 from kivy.uix.scatter import Scatter
 from kivy.uix.label import Label
 from kivy.uix.floatlayout import FloatLayout
@@ -141,19 +143,32 @@ class Mp3PiAppLayout(BoxLayout):
   isPlaying = False
   proc = None
 
-#  def args_converter(self, row_index, an_obj):
-#    
-#    if an_obj is "0":
-#      text = "HR3"
-#    if an_obj is "1":
-#      text = "FFH"
-#    return {'text': text,
-#            'size_hint_y': None,
-#            'height': 25}
+  def args_converter(self, row_index, an_obj):
+    text = "" 
+    if an_obj is "0":
+      text = "HR3"
+    if an_obj is "1":
+      text = "FFH"
+    print(an_obj)
+#    print("row_index" + str(row_index))
+
+
+
+    if row_index % 2:
+      background = (0, 0, 0, 1)
+    else:
+      background = (0.05, 0.05, 0.07, 1)
+
+    return {'text': an_obj['name'],
+            'nid': "4711",
+            'size_hint_y': None,
+            'background': background,
+            'height': 25}
 
   def __init__(self, **kwargs):
     super(Mp3PiAppLayout, self).__init__(**kwargs)
-    self.search_results.adapter.data.extend((Stations.listitems))
+#self.search_results.adapter.data.extend((Stations.listitems))
+    self.search_results.adapter.data.extend((Stations.data))
     self.ids['search_results_list'].adapter.bind(on_selection_change=self.change_selection)
     self.ids.volume_slider.value = Alsa.get_mixer("", {})
 
@@ -161,8 +176,9 @@ class Mp3PiAppLayout(BoxLayout):
 #    os.system("amixer set Master %s%%" % int(args))
     Alsa.set_mixer("", int(args), {})
 
-  def change_selection(self, args):
+  def  change_selection(self, args):
     if args.selection:
+      print(args.selection[0].index)
       self.change_image(args.selection[0].text)
       self.stop_second_thread()
       self.start_second_thread(Stations.getStreamURLbyName(args.selection[0].text))
@@ -199,6 +215,10 @@ class Mp3PiAppLayout(BoxLayout):
 
   def change_image(self, station_name):
     self.ids.imageid.source = Stations.getImageUrl(Stations.getIdByName(station_name))    
+
+  def pause(self):
+    self.stop.set()
+    self.search_results.adapter.deselect_list(self.search_results.adapter.selection)
 
 class Mp3PiApp(App):
   def build_config(self, config):
