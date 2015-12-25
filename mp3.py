@@ -19,12 +19,9 @@ import sys
 import json
 import pprint
 import requests
+from kivy.logger import Logger
 from signal import SIGTSTP, SIGTERM, SIGABRT
-
 ##from threading import Thread
-
-#user_agent = {'User-agent': 'User-Agent: XBMC Addon Radio'}
-
 
 
 class AlsaInterface():
@@ -34,7 +31,7 @@ class AlsaInterface():
   def __init__(self): # picks first mixer and set as default
     all_mixers = self.list_mixers()
     self.mixer = all_mixers[0]
-    print("Setting default mixer to: " + self.mixer)
+    Logger.info("AlsaInterface: Setting default mixer to: " + self.mixer)
 
   def list_mixers(self, **kwargs):
     return(alsaaudio.mixers(**kwargs))
@@ -144,15 +141,6 @@ class Mp3PiAppLayout(BoxLayout):
   proc = None
 
   def args_converter(self, row_index, an_obj):
-    text = "" 
-    if an_obj is "0":
-      text = "HR3"
-    if an_obj is "1":
-      text = "FFH"
-    print(an_obj)
-#    print("row_index" + str(row_index))
-
-
 
     if row_index % 2:
       background = (0, 0, 0, 1)
@@ -167,18 +155,17 @@ class Mp3PiAppLayout(BoxLayout):
 
   def __init__(self, **kwargs):
     super(Mp3PiAppLayout, self).__init__(**kwargs)
-#self.search_results.adapter.data.extend((Stations.listitems))
+
     self.search_results.adapter.data.extend((Stations.data))
     self.ids['search_results_list'].adapter.bind(on_selection_change=self.change_selection)
     self.ids.volume_slider.value = Alsa.get_mixer("", {})
 
   def change_volume(self, args):
-#    os.system("amixer set Master %s%%" % int(args))
+    #os.system("amixer set Master %s%%" % int(args))
     Alsa.set_mixer("", int(args), {})
 
   def  change_selection(self, args):
     if args.selection:
-      print(args.selection[0].index)
       self.change_image(args.selection[0].text)
       self.stop_second_thread()
       self.start_second_thread(Stations.getStreamURLbyName(args.selection[0].text))
@@ -189,7 +176,7 @@ class Mp3PiAppLayout(BoxLayout):
     if self.isPlaying == True: # stop playing
       self.isPlaying = False
       if self.proc is not None:
-        print("killing %s" % self.proc.pid)
+        Logger.info("mpg123: killing %s" % self.proc.pid)
         os.kill(self.proc.pid, SIGTERM)
         self.proc = None
         self.stop.set()    
