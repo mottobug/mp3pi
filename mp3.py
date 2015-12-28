@@ -239,6 +239,7 @@ class Mp3PiAppLayout(BoxLayout):
 
           if "ICY-META: StreamTitle=" in line_joined:
             print("ICY StreamTitle found: %s " % line_joined.replace("ICY-META: StreamTitle=", ""))
+            self.ids.icytags.text = line_joined.replace("ICY-META: StreamTitle=", "")
 
           line = []
 

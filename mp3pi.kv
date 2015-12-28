@@ -29,20 +29,32 @@
       BoxLayout:
         orientation: 'vertical'
         BoxLayout:
-          AsyncImage:
-            id: imageid
-            #size_hint: None, None
+          BoxLayout:
+            orientation: 'vertical'
             size_hint_x: .4
-            #source: 'hr-info.png' 
-            #orientation: 'horizontal'
-            #pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-            allow_stretch: True
-#            canvas:
-#              Color:
-#                rgba: 0, 1, 0, .5
-#              Rectangle:
-#                pos: self.pos
-#                size: self.size
+            canvas:
+              Color:
+                rgba: 1, 0, 0, .5
+              Rectangle:
+                pos: self.pos
+                size: self.size
+            AsyncImage: # channel icon
+              id: imageid
+              #size_hint: None, None
+              size_hint_x: 1
+              size_hint_y: 1
+              anchor_y: 'top'
+              allow_stretch: True
+              canvas:
+                Color:
+                  rgba: 0, 1, 0, .5
+                Rectangle:
+                  pos: self.pos
+                  size: self.size
+            Label:
+              text: 'ICY'
+              id: icytags
+
 
           ListView:
             id: search_results_list
@@ -56,33 +68,39 @@
               args_converter=root.args_converter
               )
 
+
         BoxLayout:
+          orientation: 'horizontal'
+          height: 160
           size_hint_y: None
-          height: 100.0
-          Button:
-            text: '<<'
-            split_str: ''
-          Button:
-            split_str: ''
-            text: 'Play/Pause'
-            on_release: root.pause()
-          Button:
-            split_str: ''
-            text: '>>'
-            bold: True
-          Slider:
-            size_hint_x: .1
-            id: volume_slider
-            pos_hint: {'x':.90, 'y': 0}
-            #width: '48dp'
+          BoxLayout:
             orientation: 'vertical'
-            on_value: root.change_volume(self.value)
-#            canvas:
-#              Color:
-#                rgba: 0, 1, 0, .5
-#              Rectangle:
-#                pos: self.pos
-#                size: self.size
+            BoxLayout:
+              Label:
+                text: "text"
+                id: icytags
+            BoxLayout:
+              Button:
+                text: '<<'
+                bold: True
+              Button:
+                text: 'Play/Pause'
+                bold: True
+                on_release: root.pause()
+              Button:
+                text: '>>'
+                bold: True
+            
+            
+          BoxLayout:
+            size_hint_x: .08
+            Slider:
+              size_hint_x: .1
+              id: volume_slider
+              pos_hint: {'x':.90, 'y': 0}
+              #width: '48dp'
+              orientation: 'vertical'
+              on_value: root.change_volume(self.value)
 
     TabbedPanelItem:
       text: 'Settings'
@@ -117,3 +135,4 @@
           size_hint_y: None
           height: '48dp'
           group: 'g2'
+
