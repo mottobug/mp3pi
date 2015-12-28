@@ -33,4 +33,5 @@ pacmd set-default-sink $BT_SINK
 pactl list short sink-inputs|while read stream; do
   streamId=$(echo $stream|cut '-d ' -f1)
   echo pactl move-sink-input "$streamId" $BT_SINK
+  pactl move-sink-input "$streamId" $BT_SINK
 done

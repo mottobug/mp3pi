@@ -19,6 +19,10 @@ import sys
 import json
 import pprint
 import requests
+import signal
+
+import select
+
 from kivy.logger import Logger
 from signal import SIGTSTP, SIGTERM, SIGABRT
 ##from threading import Thread
@@ -62,6 +66,9 @@ class AlsaInterface():
           sys.exit(1)
       volumes = mixer.getvolume()
       return(volumes[0])
+
+# pactl set-sink-volume  bluez_sink.0C_A6_94_E3_76_DA 35%
+
 
 ##
 #
@@ -115,7 +122,8 @@ class radioStations():
 
   def getIdByName(self, name):
     for item in self.data:
-      if str(item['name']) == name:
+      #if str(item['name']) == name:
+      if item['name'] == name:
         return(item['id'])
 
   def getStreamURLbyName(self, name):
@@ -147,8 +155,9 @@ class Mp3PiAppLayout(BoxLayout):
     else:
       background = (0.05, 0.05, 0.07, 1)
 
+    #print("%s %s" % (row_index, an_obj))
+
     return {'text': an_obj['name'],
-            'nid': "4711",
             'size_hint_y': None,
             'background': background,
             'height': 25}
@@ -162,9 +171,10 @@ class Mp3PiAppLayout(BoxLayout):
 
   def change_volume(self, args):
     #os.system("amixer set Master %s%%" % int(args))
-    Alsa.set_mixer("", int(args), {})
+    os.system("pactl set-sink-volume  bluez_sink.0C_A6_94_E3_76_DA %s%%" % int(args))
+    #Alsa.set_mixer("", int(args), {})
 
-  def  change_selection(self, args):
+  def change_selection(self, args):
     if args.selection:
       self.change_image(args.selection[0].text)
       self.stop_second_thread()
@@ -174,34 +184,72 @@ class Mp3PiAppLayout(BoxLayout):
 
   def stop_second_thread(self):
     if self.isPlaying == True: # stop playing
-      self.isPlaying = False
       if self.proc is not None:
+        #self.proc.kill() ??
         Logger.info("mpg123: killing %s" % self.proc.pid)
         os.kill(self.proc.pid, SIGTERM)
         self.proc = None
         self.stop.set()    
+    self.isPlaying = False
+
 
   def start_second_thread(self, l_text):
     if self.isPlaying == False:
+      Logger.info("Player: starting player " + l_text)
+      
       self.isPlaying = True
       threading.Thread(target=self.infinite_loop, args=(l_text,)).start()
+    else:
+      Logger.info("Player: already playing")
+      
       
   def infinite_loop(self, url):
     iteration = 0
-    
-    self.proc = subprocess.Popen(["mpg123", "-o", "pulse", "-@", url])
 
+    print("infinite loop")
+    
+    self.proc = subprocess.Popen(["mpg123", "-o", "pulse", "-@", url], stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0)
+    # stdin=PIPE, stdout=DEVNULL, stderr=STDOUT 
+    
+    #fd = self.proc.stderr.fileno()
+    #fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+    #fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+  
+    line = []
     while True:
       if self.stop.is_set():
+        Logger.info("Player: stopping thread")
+        self.stop.clear()
         # Stop running this thread so the main Python process can exit.
         return
+      while (select.select([self.proc.stderr], [], [], 0)[0]):
+        char = self.proc.stderr.read(1)
+        #print("read %s " % char)
+        if char != '\n':
+          line.append(char)
+        else:
+          line_joined = "".join(line)
+          print("complete line is %s " % line_joined)
+
+          if "ICY-NAME: " in line_joined:
+            print("ICY name found: %s " % line_joined.replace("ICY-NAME: ", ""))
+
+          if "ICY-URL: " in line_joined:
+            print("ICY url found: %s " % line_joined.replace("ICY-URL: ", ""))
+
+          if "ICY-META: StreamTitle=" in line_joined:
+            print("ICY StreamTitle found: %s " % line_joined.replace("ICY-META: StreamTitle=", ""))
+
+          line = []
+
       iteration += 1
-      print('Infinite loop, iteration {}.'.format(iteration))
-      print(self.isPlaying)
-      time.sleep(1)
+      #print('Infinite loop, iteration {}.'.format(iteration))
+      time.sleep(.1)
 
   def change_image(self, station_name):
-    self.ids.imageid.source = Stations.getImageUrl(Stations.getIdByName(station_name))    
+    imageUrl = Stations.getImageUrl(Stations.getIdByName(station_name)) 
+    Logger.info("ImageLoader: Loading Image from %s" % (imageUrl))
+    self.ids.imageid.source = imageUrl    
 
   def pause(self):
     self.stop.set()
@@ -232,7 +280,13 @@ class Mp3PiApp(App):
   def build(self):
     return Mp3PiAppLayout()
 
+def signal_handler(signal, frame):
+  print("exit");
+  sys.exit(0);
+
 if __name__ == "__main__":
+  signal.signal(signal.SIGINT, signal_handler)
+
   Alsa = AlsaInterface()
   Stations = radioStations()
   Mp3PiApp().run()
