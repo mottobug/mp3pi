@@ -158,9 +158,6 @@ class Mp3PiAppLayout(BoxLayout):
     else:
       background = [1, 1, 1, .5]
 
-#
-    #print("%s %s" % (row_index, an_obj))
-
     return {'text': an_obj['name'],
             'size_hint_y': None,
             'deselected_color': background}
