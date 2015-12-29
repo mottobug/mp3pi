@@ -21,6 +21,8 @@ import pprint
 import requests
 import signal
 
+import re
+
 import select
 
 from kivy.logger import Logger
@@ -151,16 +153,16 @@ class Mp3PiAppLayout(BoxLayout):
   def args_converter(self, row_index, an_obj):
 
     if row_index % 2:
-      background = (0, 0, 0, 1)
+      background = [1, 1, 1, 0]
     else:
-      background = (0.05, 0.05, 0.07, 1)
+      background = [1, 1, 1, .5]
 
+#
     #print("%s %s" % (row_index, an_obj))
 
     return {'text': an_obj['name'],
             'size_hint_y': None,
-            'background': background,
-            'height': 25}
+            'deselected_color': background}
 
   def __init__(self, **kwargs):
     super(Mp3PiAppLayout, self).__init__(**kwargs)
@@ -229,17 +231,28 @@ class Mp3PiAppLayout(BoxLayout):
           line.append(char)
         else:
           line_joined = "".join(line)
-          print("complete line is %s " % line_joined)
 
+          Logger.info("MPG123: says %s " % line_joined)
+          
+          if "ICY-META: StreamTitle=" in line_joined:
+            pairs = {}
+            elements = line_joined.split(";")
+            for element in elements:
+              if element:
+                res = re.search(r"([A-Za-z]*)='(.*)'", element)
+                pairs[res.group(1)] = res.group(2)
+
+            self.ids.icytags.text = pairs['StreamTitle']
+
+          
           if "ICY-NAME: " in line_joined:
-            print("ICY name found: %s " % line_joined.replace("ICY-NAME: ", ""))
+            Logger.debug("ICYTAGS: ICY name found: %s " % line_joined.replace("ICY-NAME: ", ""))
 
           if "ICY-URL: " in line_joined:
-            print("ICY url found: %s " % line_joined.replace("ICY-URL: ", ""))
+            Logger.debug("ICYTAGS: ICY url found: %s " % line_joined.replace("ICY-URL: ", ""))
 
           if "ICY-META: StreamTitle=" in line_joined:
-            print("ICY StreamTitle found: %s " % line_joined.replace("ICY-META: StreamTitle=", ""))
-            self.ids.icytags.text = line_joined.replace("ICY-META: StreamTitle=", "")
+            Logger.debug("ICYTAGS: ICY StreamTitle found: %s " % line_joined.replace("ICY-META: StreamTitle=", ""))
 
           line = []
 
