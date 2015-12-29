@@ -149,6 +149,7 @@ class Mp3PiAppLayout(BoxLayout):
   stop = threading.Event()
   isPlaying = False
   proc = None
+  mythread = None
 
   def args_converter(self, row_index, an_obj):
 
@@ -187,11 +188,13 @@ class Mp3PiAppLayout(BoxLayout):
   def stop_second_thread(self):
     if self.isPlaying == True: # stop playing
       if self.proc is not None:
+        if self.mythread.isAlive(): 
+          print("set stop")
+          self.stop.set()    
         #self.proc.kill() ??
         Logger.info("mpg123: killing %s" % self.proc.pid)
         os.kill(self.proc.pid, SIGTERM)
         self.proc = None
-        self.stop.set()    
     self.isPlaying = False
 
 
@@ -200,7 +203,9 @@ class Mp3PiAppLayout(BoxLayout):
       Logger.info("Player: starting player " + l_text)
       
       self.isPlaying = True
-      threading.Thread(target=self.infinite_loop, args=(l_text,)).start()
+      self.mythread = threading.Thread(target=self.infinite_loop, args=(l_text,))
+      self.mythread.start()
+        
     else:
       Logger.info("Player: already playing")
       
@@ -208,25 +213,31 @@ class Mp3PiAppLayout(BoxLayout):
   def infinite_loop(self, url):
     iteration = 0
 
-    print("infinite loop")
-    
-    self.proc = subprocess.Popen(["mpg123", "-o", "pulse", "-@", url], stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0)
-    # stdin=PIPE, stdout=DEVNULL, stderr=STDOUT 
-    
-    #fd = self.proc.stderr.fileno()
-    #fl = fcntl.fcntl(fd, fcntl.F_GETFL)
-    #fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+    self.proc = subprocess.Popen(["mpg123", "-o", "pulse", "-@", url], stderr=subprocess.PIPE, bufsize = 0)
   
     line = []
     while True:
       if self.stop.is_set():
         Logger.info("Player: stopping thread")
         self.stop.clear()
-        # Stop running this thread so the main Python process can exit.
         return
+     
       while (select.select([self.proc.stderr], [], [], 0)[0]):
+
+        # check if mpg123 is died
+        #print(self.proc.returncode)
+        #print(self.proc.pid)
+        if self.proc.returncode is not None:
+          print("died")
+          return
+
+        if self.stop.is_set():
+          Logger.info("Player: stopping thread")
+          self.stop.clear()
+          return
+
+
         char = self.proc.stderr.read(1)
-        #print("read %s " % char)
         if char != '\n':
           line.append(char)
         else:
