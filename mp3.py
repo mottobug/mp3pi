@@ -20,7 +20,7 @@ import json
 import pprint
 import requests
 import signal
-
+import NetworkManager
 import re
 
 import select
@@ -29,6 +29,78 @@ from kivy.logger import Logger
 from signal import SIGTSTP, SIGTERM, SIGABRT
 ##from threading import Thread
 
+class NetworkManagerWrapper:
+  
+  ssid = None
+  strength = None
+  frequency = None
+  ip = None
+  psk = None
+  
+  # visible aps
+  aps = []
+  
+  def __init__(self):
+    self.Update()
+  
+  def Update(self):
+    self.aps = []
+
+    for conn in NetworkManager.NetworkManager.ActiveConnections:
+      settings = conn.Connection.GetSettings()
+
+      secrets = conn.Connection.GetSecrets()
+      self.psk = secrets['802-11-wireless-security']['psk']
+
+      for dev in conn.Devices:
+        for addr in dev.Ip4Config.Addresses:
+          self.ip = addr[0]
+        for route in dev.Ip4Config.Routes:
+          time.time()
+          # route
+        for ns in dev.Ip4Config.Nameservers:
+          time.time()
+      
+
+    for device in NetworkManager.NetworkManager.GetDevices():
+      if device.DeviceType != NetworkManager.NM_DEVICE_TYPE_WIFI:
+        continue
+      
+      specific_device = device.SpecificDevice()
+      active = specific_device.ActiveAccessPoint
+      # active.Ssid
+      for ap in device.SpecificDevice().GetAccessPoints():
+        self.aps.append({
+          "ssid": ap.Ssid,
+          "strength": ap.Strength,
+          "frequency": ap.Frequency})
+              
+        if ap.object_path == active.object_path:
+          self.ssid = ap.Ssid
+          self.strength = ap.Strength
+          self.frequency = ap.Frequency
+
+  def ListKnownConnections(self):
+    active = []
+    for x in NetworkManager.NetworkManager.ActiveConnections:
+      active.append(x.Connection.GetSettings()['connection']['id'])
+  
+    connections = []
+    for x in NetworkManager.Settings.ListConnections():
+      if x.GetSettings()['connection']['type'] != "802-11-wireless":
+        continue
+
+      if x.GetSettings()['connection']['id'] in active:
+        current_connection = True
+      else:
+        current_connection = False
+
+      connections.append(
+          (current_connection,
+            x.GetSettings()['connection']['id'], 
+            x.GetSettings()['connection']['type']))
+
+    return(connections)
 
 class AlsaInterface():
 
@@ -150,6 +222,8 @@ class Mp3PiAppLayout(BoxLayout):
   isPlaying = False
   proc = None
   mythread = None
+  statusthread_stop = threading.Event()
+  statusthread = None
 
   def args_converter(self, row_index, an_obj):
 
@@ -168,6 +242,9 @@ class Mp3PiAppLayout(BoxLayout):
     self.search_results.adapter.data.extend((Stations.data))
     self.ids['search_results_list'].adapter.bind(on_selection_change=self.change_selection)
     self.ids.volume_slider.value = Alsa.get_mixer("", {})
+
+    self.statusthread = threading.Thread(target=self.status_thread)
+    self.statusthread.start()
 
   def change_volume(self, args):
     #os.system("amixer set Master %s%%" % int(args))
@@ -267,7 +344,19 @@ class Mp3PiAppLayout(BoxLayout):
       iteration += 1
       #print('Infinite loop, iteration {}.'.format(iteration))
       time.sleep(.1)
+  
+  def status_thread(self):
+    while True:
+      if self.statusthread_stop.is_set():
+        self.statusthread_stop.clear()
+        return
 
+      if not int(time.time()) % 5:
+        Network.Update()
+
+      self.ids.wlanstatus.text = "%s %s%%\n%s" % (Network.ssid, Network.strength, Network.ip)
+      time.sleep(.5)
+    
   def change_image(self, station_name):
     imageUrl = Stations.getImageUrl(Stations.getIdByName(station_name)) 
     Logger.info("ImageLoader: Loading Image from %s" % (imageUrl))
@@ -298,6 +387,7 @@ class Mp3PiApp(App):
     # otherwise the app window will close, but the Python process will
     # keep running until all secondary threads exit.
     self.root.stop.set()
+    self.root.statusthread_stop.set()
 
   def build(self):
     return Mp3PiAppLayout()
@@ -308,7 +398,7 @@ def signal_handler(signal, frame):
 
 if __name__ == "__main__":
   signal.signal(signal.SIGINT, signal_handler)
-
+  Network = NetworkManagerWrapper()
   Alsa = AlsaInterface()
   Stations = radioStations()
   Mp3PiApp().run()
