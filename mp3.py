@@ -244,6 +244,7 @@ class Mp3PiAppLayout(BoxLayout):
     self.ids.volume_slider.value = Alsa.get_mixer("", {})
 
     self.statusthread = threading.Thread(target=self.status_thread)
+    self.statusthread.daemon = True
     self.statusthread.start()
 
   def change_volume(self, args):
@@ -278,6 +279,7 @@ class Mp3PiAppLayout(BoxLayout):
       
       self.isPlaying = True
       self.mythread = threading.Thread(target=self.infinite_loop, args=(l_text,))
+      self.mythread.daemon = True
       self.mythread.start()
         
     else:
@@ -402,3 +404,4 @@ if __name__ == "__main__":
   Alsa = AlsaInterface()
   Stations = radioStations()
   Mp3PiApp().run()
+
