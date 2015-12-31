@@ -396,15 +396,14 @@ class Mp3PiAppLayout(BoxLayout):
 
   def pause(self):
     self.stop.set()
-    browse(self.search_results.adapter)
     self.search_results.adapter.deselect_list(self.search_results.adapter.selection)
 
   def next(self):
     self.stop.set()
-    # XXX check list size
     if self.search_results.adapter.selection:
       index = self.search_results.adapter.selection[0].index
-      self.search_results.adapter.get_view(index+1).trigger_action(duration=0)
+      if index < len(self.search_results.adapter.data):
+        self.search_results.adapter.get_view(index+1).trigger_action(duration=0)
 
   def prev(self):
     self.stop.set()
