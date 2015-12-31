@@ -9,6 +9,9 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.widget import Widget
+from kivy.properties import NumericProperty
+from kivy.graphics import Color
 
 import threading
 import time
@@ -224,6 +227,11 @@ class Mp3PiAppLayout(BoxLayout):
   mythread = None
   statusthread_stop = threading.Event()
   statusthread = None
+  
+  colorr = NumericProperty(0)
+  colorr = .5
+
+
 
   def args_converter(self, row_index, an_obj):
 
@@ -357,6 +365,28 @@ class Mp3PiAppLayout(BoxLayout):
         Network.Update()
 
       self.ids.wlanstatus.text = "%s %s%%\n%s" % (Network.ssid, Network.strength, Network.ip)
+      
+      lines = []
+      for i in self.ids.wlanstatus.canvas.get_group(None)[1:]:
+        if type(i) is Color:
+          lines.append(i)
+          i.a = 1
+
+      if Network.strength < 50:
+        for i in lines[0:3]:
+          i.a = .5
+
+      if Network.strength < 60:
+        for i in lines[0:2]:
+          i.a = .5
+
+      if Network.strength < 70:
+        for i in lines[0:1]:
+          i.a = .5
+
+      #self.ids.wlanstatus.canvas.clear()
+      #self.ids.wlanstatus.canvas.ask_update()
+
       time.sleep(.5)
     
   def change_image(self, station_name):
@@ -393,6 +423,11 @@ class Mp3PiApp(App):
 
   def build(self):
     return Mp3PiAppLayout()
+
+class WlanSymbol(Widget):
+  colorrr = NumericProperty(0)
+  colorrr = .5
+  pass
 
 def signal_handler(signal, frame):
   print("exit");

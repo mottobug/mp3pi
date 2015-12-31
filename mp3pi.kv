@@ -14,6 +14,31 @@
   height: 60
   line_height: 1
 
+<WlanSymbol>:
+  id: wlansymbol
+  canvas:
+    Color:
+      rgba: 1, 1, 1, .5
+    Line:
+      width: 2
+      circle: (30, 220, 30, 50, -50)
+    Color:
+      rgba: 1, 1, 1, .5
+    Line:
+      width: 2
+      circle: (30, 220, 20, 50, -50)
+    Color:
+      rgba: 1, 1, 1, 1
+    Line:
+      width: 2
+      circle: (30, 220, 10, 50, -50)
+    Color:
+      rgba: 1, 1, 1, .1
+    Line:
+      width: 2 
+      circle: (30, 220, 1)
+
+
 <Mp3PiAppLayout>:
   name: 'Testueberschrift'
   fullscreen: True
@@ -51,13 +76,38 @@
 #                Rectangle:
 #                  pos: self.pos
 #                  size: self.size
+
+#            WlanSymbol:
+
             Label:
               text: ''
               text_size: self.size
               halign: 'left'
               id: wlanstatus
 
-
+              canvas:
+                Color:
+                  rgba: 1, 1, 1, .5
+                Line:
+                  width: 2
+                  circle: (30, 220, 30, 50, -50)
+                Color:
+                  rgba: 1, 1, 1, .5
+                Line:
+                  width: 2
+                  circle: (30, 220, 20, 50, -50)
+                Color:
+                  rgba: 1, 1, 1, 1
+                Line:
+                  width: 2
+                  circle: (30, 220, 10, 50, -50)
+                Color:
+                  rgba: 1, 1, 1, 1
+                Line:
+                  width: 2 
+                  circle: (30, 220, 1)
+        
+      
           ListView:
             id: search_results_list
 #            height: 50 
