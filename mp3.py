@@ -28,9 +28,17 @@ import re
 
 import select
 
+import prettytable
+
 from kivy.logger import Logger
 from signal import SIGTSTP, SIGTERM, SIGABRT
-##from threading import Thread
+
+import string,cgi,time
+from os import curdir, sep
+from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+
+RootApp = "init"
+RoRoRo = "lala"
 
 class NetworkManagerWrapper:
   
@@ -155,18 +163,12 @@ class radioStations():
   user_agent = {'User-agent': 'User-Agent: XBMC Addon Radio'}
 
   data = []
-  listitems = []
 
   def __init__(self):
     url = "http://radio.de/info/menu/broadcastsofcategory?category=_top"
     response  = requests.get(url, headers = self.user_agent)
     #print(response.status_code)
     self.data = response.json()
-
-    # array for kivy radio list
-    for item in self.data:
-      self.listitems.append(item['name'])    
-
 
   def getStations(self):
     return(self.data)
@@ -220,21 +222,19 @@ class radioStations():
     #print(data['streamURLs'][0]['streamURL'])
 
 class Mp3PiAppLayout(BoxLayout):
+
+  global RootApp
   
-  stop = threading.Event()
   isPlaying = False
   proc = None
+
+  stop = threading.Event()
   mythread = None
+
   statusthread_stop = threading.Event()
   statusthread = None
-  
-  colorr = NumericProperty(0)
-  colorr = .5
-
-
 
   def args_converter(self, row_index, an_obj):
-
     if row_index % 2:
       background = [1, 1, 1, 0]
     else:
@@ -245,7 +245,10 @@ class Mp3PiAppLayout(BoxLayout):
             'deselected_color': background}
 
   def __init__(self, **kwargs):
+    global RootApp
     super(Mp3PiAppLayout, self).__init__(**kwargs)
+    
+    RootApp = self
 
     self.search_results.adapter.data.extend((Stations.data))
     self.ids['search_results_list'].adapter.bind(on_selection_change=self.change_selection)
@@ -254,6 +257,8 @@ class Mp3PiAppLayout(BoxLayout):
     self.statusthread = threading.Thread(target=self.status_thread)
     self.statusthread.daemon = True
     self.statusthread.start()
+
+
 
   def change_volume(self, args):
     #os.system("amixer set Master %s%%" % int(args))
@@ -280,7 +285,6 @@ class Mp3PiAppLayout(BoxLayout):
         self.proc = None
     self.isPlaying = False
 
-
   def start_second_thread(self, l_text):
     if self.isPlaying == False:
       Logger.info("Player: starting player " + l_text)
@@ -292,7 +296,6 @@ class Mp3PiAppLayout(BoxLayout):
         
     else:
       Logger.info("Player: already playing")
-      
       
   def infinite_loop(self, url):
     iteration = 0
@@ -386,7 +389,6 @@ class Mp3PiAppLayout(BoxLayout):
 
       #self.ids.wlanstatus.canvas.clear()
       #self.ids.wlanstatus.canvas.ask_update()
-
       time.sleep(.5)
     
   def change_image(self, station_name):
@@ -439,19 +441,48 @@ class Mp3PiApp(App):
   def build(self):
     return Mp3PiAppLayout()
 
-class WlanSymbol(Widget):
-  colorrr = NumericProperty(0)
-  colorrr = .5
-  pass
-
 def signal_handler(signal, frame):
   print("exit");
   sys.exit(0);
 
+class HTTPHandler(BaseHTTPRequestHandler):
+  global RootApp
+
+  #print(Mp3PiAppClass)
+  def do_GET(self):
+    if self.path == "/":
+    
+      x = prettytable.PrettyTable()
+      for i in RootApp.search_results.adapter.data:
+        temp = []
+        for xx in i:
+          temp.append(i[xx])
+        x.add_row(temp)
+
+      self.send_response(200)
+      self.send_header('Content-type',  'text/html')
+      self.end_headers()
+      self.wfile.write(self.__dict__)
+      self.wfile.write(RootApp.isPlaying)
+      self.wfile.write(x.get_html_string())
+#      self.wfile.write(RootApp.search_results.adapter.data)
+      #self.wfile.write(json.dumps(RootApp.search_results.adapter.data, indent=4, separators=('.', ': ')))
+    else:
+      print(self.path)
+
+
 if __name__ == "__main__":
   signal.signal(signal.SIGINT, signal_handler)
+
   Network = NetworkManagerWrapper()
   Alsa = AlsaInterface()
   Stations = radioStations()
+
+  httpd = HTTPServer(('', 8080), HTTPHandler)
+  httpd_thread = threading.Thread(target=httpd.serve_forever)
+  httpd_thread.daemon = True
+  httpd_thread.start()
+
   Mp3PiApp().run()
+
 
