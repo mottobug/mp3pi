@@ -13,6 +13,8 @@ from kivy.uix.widget import Widget
 from kivy.properties import NumericProperty
 from kivy.graphics import Color
 
+import pdb
+
 import threading
 import time
 import os
@@ -26,9 +28,12 @@ import signal
 import NetworkManager
 import re
 
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
 import select
 
-import prettytable
+import markup
 
 from kivy.logger import Logger
 from signal import SIGTSTP, SIGTERM, SIGABRT
@@ -454,21 +459,32 @@ class HTTPHandler(BaseHTTPRequestHandler):
   #print(Mp3PiAppClass)
   def do_GET(self):
     if self.path == "/":
-    
-      x = prettytable.PrettyTable()
-      for i in RootApp.search_results.adapter.data:
-        temp = []
-        for xx in i:
-          temp.append(i[xx])
-        x.add_row(temp)
+      
+      self.page = markup.page()
+      self.page.init(title="Title")
+      
+      self.page.table()
 
+      for row in RootApp.search_results.adapter.data:
+        self.page.tr()
+        for column in row:
+          #pdb.set_trace()
+          string1 = row[column]
+          if type(row[column]) == 'float':
+            string1 = str(row[column])
+          if type(row[column]) == 'str':
+            string1 = unicode(row[column], "utf8")
+          self.page.td(string1)
+        self.page.tr.close()
+
+      self.page.p(time.time())
+        
+      
       self.send_response(200)
       self.send_header('Content-type',  'text/html')
       self.end_headers()
-      self.wfile.write(self.__dict__)
       self.wfile.write(RootApp.isPlaying)
-      self.wfile.write(x.get_html_string())
-#      self.wfile.write(RootApp.search_results.adapter.data)
+      self.wfile.write(self.page)
       #self.wfile.write(json.dumps(RootApp.search_results.adapter.data, indent=4, separators=('.', ': ')))
     else:
       print(self.path)
