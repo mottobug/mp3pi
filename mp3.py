@@ -61,7 +61,10 @@ class NetworkManagerWrapper:
       settings = conn.Connection.GetSettings()
 
       secrets = conn.Connection.GetSecrets()
-      self.psk = secrets['802-11-wireless-security']['psk']
+      
+      if secrets['802-11-wireless-security']:
+        if secrets['802-11-wireless-security']['psk']:
+          self.psk = secrets['802-11-wireless-security']['psk']
 
       for dev in conn.Devices:
         for addr in dev.Ip4Config.Addresses:
