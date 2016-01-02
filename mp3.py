@@ -376,6 +376,7 @@ class Mp3PiAppLayout(BoxLayout):
         Network.Update()
 
       self.ids.wlanstatus.text = "%s %s%%\n%s" % (Network.ssid, Network.strength, Network.ip)
+      #self.ids.wlanstatus.text = "%s %s%%\n%s" % ("myNetwork", Network.strength, "192.168.47.11")
       
       lines = []
       for i in self.ids.wlanstatus.canvas.get_group(None)[1:]:
