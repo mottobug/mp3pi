@@ -463,9 +463,24 @@ class HTTPHandler(BaseHTTPRequestHandler):
       self.page = markup.page()
       self.page.init(title="Title")
       
-      self.page.table()
+      self.page.table(border="true")
 
+      firstline = True
       for row in RootApp.search_results.adapter.data:
+        if firstline is True:
+          self.page.tr()
+          for column in row:
+            #pdb.set_trace()
+            string1 = column
+            if type(column) == 'float':
+              string1 = str(column)
+            if type(column) == 'str':
+              string1 = unicode(column, "utf8")
+            self.page.th(string1, align="left")
+          self.page.tr.close()
+          firstline = False
+          continue
+
         self.page.tr()
         for column in row:
           #pdb.set_trace()
