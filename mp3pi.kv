@@ -14,31 +14,6 @@
   height: 60
   line_height: 1
 
-<WlanSymbol>:
-  id: wlansymbol
-  canvas:
-    Color:
-      rgba: 1, 1, 1, .5
-    Line:
-      width: 2
-      circle: (30, 220, 30, 50, -50)
-    Color:
-      rgba: 1, 1, 1, .5
-    Line:
-      width: 2
-      circle: (30, 220, 20, 50, -50)
-    Color:
-      rgba: 1, 1, 1, 1
-    Line:
-      width: 2
-      circle: (30, 220, 10, 50, -50)
-    Color:
-      rgba: 1, 1, 1, .1
-    Line:
-      width: 2 
-      circle: (30, 220, 1)
-
-
 <Mp3PiAppLayout>:
   name: 'Testueberschrift'
   fullscreen: True
@@ -90,22 +65,22 @@
                   rgba: 1, 1, 1, .5
                 Line:
                   width: 2
-                  circle: (30, 220, 30, 50, -50)
+                  circle: (self.x + 30, self.y + 60, 30, 50, -50)
                 Color:
                   rgba: 1, 1, 1, .5
                 Line:
                   width: 2
-                  circle: (30, 220, 20, 50, -50)
+                  circle: (self.x + 30, self.y + 60, 20, 50, -50)
                 Color:
                   rgba: 1, 1, 1, 1
                 Line:
                   width: 2
-                  circle: (30, 220, 10, 50, -50)
+                  circle: (self.x + 30, self.y + 60, 10, 50, -50)
                 Color:
                   rgba: 1, 1, 1, 1
                 Line:
                   width: 2 
-                  circle: (30, 220, 1)
+                  circle: (self.x + 30, self.y + 60, 1)
         
       
           ListView:
@@ -165,10 +140,10 @@
                     rgba: 1, 1, 1, 1
                   Line:
                     width: 3
-                    circle: (50, 40, 20, 30, 330)
+                    circle: (self.x + 50, self.y + 40, 20, 30, 330)
                   Line:
                     width: 3
-                    points: 50, 45, 50, 65
+                    points: self.x + 50, self.y + 45, 50, 65
               Button:
                 text: '<<'
                 bold: True
@@ -195,35 +170,63 @@
 
     TabbedPanelItem:
       text: 'Settings'
+      
+      BoxLayout:
+        BoxLayout:
+          size_hint_x: .5
+          orientation: "vertical"
+          Label:
+            text_size: self.size
+            halign: "left"
+            size_hint_y: None
+            height: 50
+            text: "List of Networks:"
+          Spinner:
+            id: wlan_list
+            size_hint_y: None
+            height: 50
+            text: "WLANs"
+            values: ("no", "values", "yet") 
+          Label:
+            text_size: self.size
+            size_hint_y: None
+            height: 50
+            halign: "left"
+            text: "List of Audio Cards:"
+          Spinner:
+            id: audio_list
+            size_hint_y: None
+            height: 50
+            text: "AudioCards"
+            values: ("no", "values", "yet") 
 
-      GridLayout:
+        BoxLayout:
 
-        cols: 3
-        spacing: '8dp'
-        size_hint: .5, None
-        height: self.minimum_height
+          cols: 3
+          spacing: '8dp'
+          size_hint: .5, None
 
-        Label:
-          text: 'Checkbox'
+          Label:
+            text: 'Checkbox'
 
-        CheckBox:
-          size_hint_y: None
-          height: '48dp'
+          CheckBox:
+            size_hint_y: None
+            height: '48dp'
 
-        CheckBox:
-          size_hint_y: None
-          height: '48dp'
+          CheckBox:
+            size_hint_y: None
+            height: '48dp'
 
-        Label:
-          text: 'CheckBox with group'
+          Label:
+            text: 'CheckBox with group'
 
-        CheckBox:
-          size_hint_y: None
-          height: '48dp'
-          group: 'g2'
+          CheckBox:
+            size_hint_y: None
+            height: '48dp'
+            group: 'g2'
 
-        CheckBox:
-          size_hint_y: None
-          height: '48dp'
-          group: 'g2'
+          CheckBox:
+            size_hint_y: None
+            height: '48dp'
+            group: 'g2'
 

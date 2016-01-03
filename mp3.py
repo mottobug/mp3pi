@@ -261,6 +261,15 @@ class Mp3PiAppLayout(BoxLayout):
     self.search_results.adapter.data.extend((Stations.data))
     self.ids['search_results_list'].adapter.bind(on_selection_change=self.change_selection)
 
+    networklist = []
+    for net in Network.ListKnownConnections():
+      networklist.append(net[1])
+      if net[0] is True:
+        self.ids['wlan_list'].text = net[1]
+
+    self.ids['wlan_list'].values = networklist
+    self.ids['wlan_list'].bind(text=self.change_wlan_selection)
+
     #self.ids.volume_slider.value = Alsa.get_mixer("", {})
 
     # XXX validate!!
@@ -271,7 +280,8 @@ class Mp3PiAppLayout(BoxLayout):
     self.statusthread.daemon = True
     self.statusthread.start()
 
-
+  def change_wlan_selection(self, spinner, args):
+    print(args)
 
   def change_volume(self, args):
     #os.system("amixer set Master %s%%" % int(args))
