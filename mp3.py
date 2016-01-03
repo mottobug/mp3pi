@@ -423,6 +423,11 @@ class Mp3PiAppLayout(BoxLayout):
       if index >= 1:
         self.search_results.adapter.get_view(index-1).trigger_action(duration=0)
 
+  def poweroff(self):
+    print("poweroff")
+
+  def reboot(self):
+    print("reboot")
 
 class Mp3PiApp(App):
   def build_config(self, config):

@@ -134,6 +134,40 @@
                 halign: 'left'
                 id: icytags
             BoxLayout:
+              popup: popup.__self__
+              id: bl
+              Popup:
+                id: popup
+                title: 'Shutdown'
+                on_parent:
+                  if self.parent == bl: self.parent.remove_widget(self)
+                BoxLayout:
+                  Button:
+                    size_hint_y: None
+                    width: 100
+                    text: "Poweroff"
+                    on_release: root.poweroff()
+                    on_release: popup.dismiss()
+                  Button:
+                    size_hint_y: None
+                    width: 100
+                    text: "Reboot"
+                    on_release: root.reboot()
+                    on_release: popup.dismiss()
+
+              Button: 
+                size_hint_x: None
+                width: 100
+                on_release: self.parent.popup.open()
+                canvas:
+                  Color:
+                    rgba: 1, 1, 1, 1
+                  Line:
+                    width: 3
+                    circle: (50, 40, 20, 30, 330)
+                  Line:
+                    width: 3
+                    points: 50, 45, 50, 65
               Button:
                 text: '<<'
                 bold: True
