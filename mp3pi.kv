@@ -138,7 +138,8 @@
               id: bl
               Popup:
                 id: popup
-                title: 'Shutdown'
+                title: 'Shutdown/Reboot'
+                size_hint: .6, .5
                 on_parent:
                   if self.parent == bl: self.parent.remove_widget(self)
                 BoxLayout:

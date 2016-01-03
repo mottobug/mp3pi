@@ -260,7 +260,12 @@ class Mp3PiAppLayout(BoxLayout):
 
     self.search_results.adapter.data.extend((Stations.data))
     self.ids['search_results_list'].adapter.bind(on_selection_change=self.change_selection)
-    self.ids.volume_slider.value = Alsa.get_mixer("", {})
+
+    #self.ids.volume_slider.value = Alsa.get_mixer("", {})
+
+    # XXX validate!!
+    self.ids.volume_slider.value = int(subprocess.check_output(["pulseaudio-ctl", "full-status"]).split(" ")[0])
+
 
     self.statusthread = threading.Thread(target=self.status_thread)
     self.statusthread.daemon = True
@@ -270,8 +275,9 @@ class Mp3PiAppLayout(BoxLayout):
 
   def change_volume(self, args):
     #os.system("amixer set Master %s%%" % int(args))
-    os.system("pactl set-sink-volume  bluez_sink.0C_A6_94_E3_76_DA %s%%" % int(args))
+    #os.system("pactl set-sink-volume  bluez_sink.0C_A6_94_E3_76_DA %s%%" % int(args))
     #Alsa.set_mixer("", int(args), {})
+    os.system("pulseaudio-ctl set %s%%" % int(args))
 
   def change_selection(self, args):
     if args.selection:
