@@ -9,6 +9,7 @@ pip install pyalsaaudio pybluez python-networkmanager pygments
 systemctl set-default multi-user.target
 
 cp systemd/mp3pi.service /etc/systemd/system
+systemctl enable mp3pi
 
 https://github.com/graysky2/pulseaudio-ctl
 
