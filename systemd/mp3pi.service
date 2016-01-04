@@ -1,0 +1,9 @@
+[Unit]
+Description=mp3pi Kivy App
+
+[Service]
+#Type=forking
+ExecStart=/root/mp3pi/startup.sh
+
+[Install]
+WantedBy=multi-user.target
