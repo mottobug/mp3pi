@@ -2,7 +2,7 @@
 
 Requirements:
 
-apt-get install mpg123 python-kivy libbluetooth-dev
+apt-get install mpg123 python-kivy libbluetooth-dev bc
 
 pip install pyalsaaudio pybluez python-networkmanager pygments
 
