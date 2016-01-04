@@ -1,6 +1,6 @@
 from kivy.app import App
 
-from objbrowser import browse
+#from objbrowser import browse
 
 from kivy.uix.scatter import Scatter
 from kivy.uix.label import Label
