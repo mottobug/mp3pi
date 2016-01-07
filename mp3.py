@@ -44,10 +44,6 @@ from os import curdir, sep
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 RootApp = "init"
-RoRoRo = "lala"
-
-
-
 
 class Mp3PiAppLayout(BoxLayout):
 
@@ -101,7 +97,13 @@ class Mp3PiAppLayout(BoxLayout):
     self.statusthread.start()
 
   def change_wlan_selection(self, spinner, args):
-    print(args)
+    Logger.info("WLAN: user selection %s" % args)
+    Logger.info("WLAN: current WLAN %s" % Network.ssid)
+
+    if args != Network.ssid:
+      Logger.info("WLAN: changing WLAN to %s" % args)
+      Network.activate(args)
+
 
   def change_volume(self, args):
     #os.system("amixer set Master %s%%" % int(args))

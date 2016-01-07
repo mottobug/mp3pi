@@ -2,6 +2,8 @@
 import time
 import NetworkManager
 
+from objbrowser import browse
+
 class NetworkManagerWrapper:
   
   ssid = None
@@ -51,10 +53,13 @@ class NetworkManagerWrapper:
           "strength": ap.Strength,
           "frequency": ap.Frequency})
               
-        if ap.object_path == active.object_path:
-          self.ssid = ap.Ssid
-          self.strength = ap.Strength
-          self.frequency = ap.Frequency
+        print(active)
+        
+        if hasattr(active, 'object_path'):
+          if ap.object_path == active.object_path:
+            self.ssid = ap.Ssid
+            self.strength = ap.Strength
+            self.frequency = ap.Frequency
 
   def ListKnownConnections(self):
     active = []
@@ -77,4 +82,50 @@ class NetworkManagerWrapper:
             x.GetSettings()['connection']['type']))
 
     return(connections)
+
+  def activate(self, network):
+    connections = NetworkManager.Settings.ListConnections()
+    connections = dict([(x.GetSettings()['connection']['id'], x) for x in connections])
+
+    if not NetworkManager.NetworkManager.NetworkingEnabled:
+        NetworkManager.NetworkManager.Enable(True)
+    for n in network:
+        if n not in connections:
+            print("No such connection: %s" % n)
+            sys.exit(1)
+
+        print("Activating connection '%s'" % n)
+        conn = connections[n]
+        ctype = conn.GetSettings()['connection']['type']
+        if ctype == 'vpn':
+            for dev in NetworkManager.NetworkManager.GetDevices():
+                if dev.State == NetworkManager.NM_DEVICE_STATE_ACTIVATED and dev.Managed:
+                    break
+            else:
+                print("No active, managed device found")
+                sys.exit(1)
+        else:
+            dtype = {
+                '802-11-wireless': 'wlan',
+                'gsm': 'wwan',
+            }
+            if dtype in connection_types:
+                enable(dtype)
+            dtype = {
+                '802-11-wireless': NetworkManager.NM_DEVICE_TYPE_WIFI,
+                '802-3-ethernet': NetworkManager.NM_DEVICE_TYPE_ETHERNET,
+                'gsm': NetworkManager.NM_DEVICE_TYPE_MODEM,
+            }.get(ctype,ctype)
+            devices = NetworkManager.NetworkManager.GetDevices()
+
+            for dev in devices:
+                if dev.DeviceType == dtype and dev.State == NetworkManager.NM_DEVICE_STATE_DISCONNECTED:
+                    break
+            else:
+		print(dev.State)
+                print("No suitable and available %s device found" % ctype)
+                sys.exit(1)
+
+        NetworkManager.NetworkManager.ActivateConnection(conn, dev, "/")
+
 
