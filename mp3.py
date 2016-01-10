@@ -78,10 +78,10 @@ class Mp3PiAppLayout(BoxLayout):
     self.ids['search_results_list'].adapter.bind(on_selection_change=self.change_selection)
 
     networklist = []
-    for net in Network.ListKnownConnections():
-      networklist.append(net[1])
-      if net[0] is True:
-        self.ids['wlan_list'].text = net[1]
+    for net in Network.visible_aps:
+      networklist.append(net['ssid'])
+      if net['ssid'] is Network.ssid:
+        self.ids['wlan_list'].text = net[Network.ssid]
 
     self.ids['wlan_list'].values = networklist
     self.ids['wlan_list'].bind(text=self.change_wlan_selection)
@@ -102,7 +102,7 @@ class Mp3PiAppLayout(BoxLayout):
 
     if args != Network.ssid:
       Logger.info("WLAN: changing WLAN to %s" % args)
-      Network.activate(args)
+      Network.activate([args])
 
 
   def change_volume(self, args):
