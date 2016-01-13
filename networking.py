@@ -1,7 +1,6 @@
 
-import gi
-gi.require_version('NM', '1.0')
-from gi.repository import NM
+import time
+import NetworkManager
 
 from objbrowser import browse
 
@@ -19,76 +18,171 @@ class NetworkManagerWrapper:
   # visible aps
   visible_aps = []
 
+  connection_types = ['wireless','wwan','wimax']
+
+  
   def __init__(self):
     self.Update()
-
-  def activate(self, name):
-    client = NM.Client.new(None)
-
-    connections = client.get_connections()
-
-    for c in connections:
-      if c.get_id() == name:
-        client.activate_connection_async(c, None)
-        return
-    
-    print("connection not found")
-
-
-  def mode_to_string(self, mode):
-    if mode == getattr(NM, '80211Mode').INFRA:
-      return "INFRA"
-    if mode == getattr(NM, '80211Mode').ADHOC:
-      return "ADHOC"
-    if mode == getattr(NM, '80211Mode').AP:
-      return "AP"
-    return "UNKNOWN"
- 
-  def flags_to_security(self, flags, wpa_flags, rsn_flags):
-    str = ""
-    if ((flags & getattr(NM, '80211ApFlags').PRIVACY) and
-      (wpa_flags == 0) and (rsn_flags == 0)):
-      str = str  + " WEP"
-    if wpa_flags != 0:
-      str = str + " WPA1"
-    if rsn_flags != 0:
-      str = str + " WPA2"
-    if ((wpa_flags & getattr(NM, '80211ApSecurityFlags').KEY_MGMT_802_1X) or
-      (rsn_flags & getattr(NM, '80211ApSecurityFlags').KEY_MGMT_802_1X)):
-      str = str + " 802.1X"
-    return str.lstrip()
-
+  
   def Update(self):
     self.visible_aps = []
     self.known_aps = []
 
-    client = NM.Client.new(None)
-    devs = client.get_devices()
+    try:
+      for conn in NetworkManager.NetworkManager.ActiveConnections:
+        settings = conn.Connection.GetSettings()
 
-    for dev in devs:
-      if dev.get_device_type() == NM.DeviceType.WIFI:
-        active_ap = dev.get_active_access_point()
-
-        if active_ap is not None:
-          self.ssid = active_ap.get_ssid().get_data()
-          print(self.ssid)
-          self.strength = active_ap.get_strength()
-          interface = dev.get_iface()
+        secrets = conn.Connection.GetSecrets()
         
+        if secrets['802-11-wireless-security']:
+          if secrets['802-11-wireless-security']['psk']:
+            self.psk = secrets['802-11-wireless-security']['psk']
 
-          ip_cfg = dev.get_ip4_config() 
-          if ip_cfg is not None:
-            addresses = ip_cfg.get_addresses()
-            for address in addresses:
-              self.ip = address.get_address()
+        for dev in conn.Devices:
+          if hasattr(dev.Ip4Config, 'Addresses'):
+            for addr in dev.Ip4Config.Addresses:
+              self.ip = addr[0]
+          if hasattr(dev.Ip4Config, 'Routes'):
+            for route in dev.Ip4Config.Routes:
+              time.time()
+              # route
+          if hasattr(dev.Ip4Config, 'Nameservers'):
+            for ns in dev.Ip4Config.Nameservers:
+              time.time()
+    except:
+      print("except")
+    finally:
+      True
+      
 
-        for ap in dev.get_access_points():
-          self.visible_aps.append({
-            "ssid": ap.get_ssid().get_data(),
-            "strength": ap.get_strength(),
-            "frequency": ap.get_frequency,
-            "bssid": ap.get_bssid(),
-            "mode": self.mode_to_string(ap.get_mode()),
-            "security": self.flags_to_security(ap.get_flags(), ap.get_wpa_flags(), ap.get_rsn_flags())})
+    for device in NetworkManager.NetworkManager.GetDevices():
+      if device.DeviceType != NetworkManager.NM_DEVICE_TYPE_WIFI:
+        continue
+      
+      specific_device = device.SpecificDevice()
+      active = specific_device.ActiveAccessPoint
+      # active.Ssid
+      for ap in device.SpecificDevice().GetAccessPoints():
+        self.known_aps.append({
+          "ssid": ap.Ssid,
+          "strength": ap.Strength,
+          "frequency": ap.Frequency})
+              
+        #print(active)
+        
+        if hasattr(active, 'object_path'):
+          if ap.object_path == active.object_path:
+            self.ssid = ap.Ssid
+            self.strength = ap.Strength
+            self.frequency = ap.Frequency
+
+    for device in NetworkManager.NetworkManager.GetDevices():
+      if device.DeviceType != NetworkManager.NM_DEVICE_TYPE_WIFI:
+        continue
+      #print("Visible on %s" % device.Udi[device.Udi.rfind('/')+1:])
+      device = device.SpecificDevice()
+      active = device.ActiveAccessPoint
+      aps = device.GetAccessPoints()
+      for ap in aps:
+        prefix = '* ' if ap.object_path == active.object_path else '  '
+        #print("%s %s %s" % (prefix, ap.Ssid, ap.Strength))
+        self.visible_aps.append({
+          "ssid": ap.Ssid,
+          "strength": ap.Strength,
+          "frequency": ap.Frequency})
+
+  def ListKnownConnections(self):
+    active = []
+    for x in NetworkManager.NetworkManager.ActiveConnections:
+      active.append(x.Connection.GetSettings()['connection']['id'])
+  
+    connections = []
+    for x in NetworkManager.Settings.ListConnections():
+      if x.GetSettings()['connection']['type'] != "802-11-wireless":
+        continue
+
+      if x.GetSettings()['connection']['id'] in active:
+        current_connection = True
+      else:
+        current_connection = False
+
+      connections.append(
+          (current_connection,
+            x.GetSettings()['connection']['id'], 
+            x.GetSettings()['connection']['type']))
+
+    return(connections)
+
+  def enable(self, names):
+      for n in names:
+          if n not in self.connection_types:
+              print("No such connection type: %s" % n)
+              return
+              #sys.exit(1)
+          setattr(NetworkManager.NetworkManager, n.title() + 'Enabled', True)
+
+  def activate(self, network):
+    connections = NetworkManager.Settings.ListConnections()
+    connections = dict([(x.GetSettings()['connection']['id'], x) for x in connections])
+
+    if not NetworkManager.NetworkManager.NetworkingEnabled:
+        NetworkManager.NetworkManager.Enable(True)
+    for n in network:
+        if n not in connections:
+            print("No such connection: %s" % n)
+            return
+            #sys.exit(1)
+
+        print("Activating connection '%s'" % n)
+        conn = connections[n]
+        ctype = conn.GetSettings()['connection']['type']
+        if ctype == 'vpn':
+            for dev in NetworkManager.NetworkManager.GetDevices():
+                if dev.State == NetworkManager.NM_DEVICE_STATE_ACTIVATED and dev.Managed:
+                    break
+            else:
+                print("No active, managed device found")
+                return
+                #sys.exit(1)
+        else:
+            dtype = {
+                '802-11-wireless': 'wlan',
+                'gsm': 'wwan',
+            }
+            if dtype in self.connection_types:
+                enable(dtype)
+            dtype = {
+                '802-11-wireless': NetworkManager.NM_DEVICE_TYPE_WIFI,
+                '802-3-ethernet': NetworkManager.NM_DEVICE_TYPE_ETHERNET,
+                'gsm': NetworkManager.NM_DEVICE_TYPE_MODEM,
+            }.get(ctype,ctype)
+            devices = NetworkManager.NetworkManager.GetDevices()
+
+            for dev in devices:
+                print("s %s %s" % (dev.DeviceType, dev.State))
+                print("i %s %s" % (dtype, NetworkManager.NM_DEVICE_STATE_DISCONNECTED))
+
+                if dev.DeviceType == dtype and (dev.State == NetworkManager.NM_DEVICE_STATE_DISCONNECTED or dev.State == NetworkManager.NM_DEVICE_STATE_ACTIVATED):
+                    break
+            else:
+                print(dev.State)
+                print("No suitable and available %s device found" % ctype)
+                return
+                #sys.exit(1)
+
+        NetworkManager.NetworkManager.ActivateConnection(conn, dev, "/")
+
+  def visible():
+    for device in NetworkManager.NetworkManager.GetDevices():
+      if device.DeviceType != NetworkManager.NM_DEVICE_TYPE_WIFI:
+        continue
+      print("Visible on %s" % device.Udi[device.Udi.rfind('/')+1:])
+      device = device.SpecificDevice()
+      active = device.ActiveAccessPoint
+      aps = device.GetAccessPoints()
+      for ap in aps:
+        prefix = '* ' if ap.object_path == active.object_path else '  '
+        print("%s %s %s" % (prefix, ap.Ssid, ap.Strength))
+  
 
 

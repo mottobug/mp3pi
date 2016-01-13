@@ -103,7 +103,7 @@ class Mp3PiAppLayout(BoxLayout):
 
     if args != Network.ssid:
       Logger.info("WLAN: changing WLAN to %s" % args)
-      Network.activate(args)
+      Network.activate([args])
 
 
   def change_volume(self, args):
