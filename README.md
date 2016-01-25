@@ -31,5 +31,19 @@ https://github.com/graysky2/pulseaudio-ctl
 ?? gir1.2-networkmanager-1.0 gir1.2-nmgtk-1.0 libnm-dev libnm-glib-dev libnm-glib-vpn-dev libnm-gtk-dev
   libnm-util-dev libnmap-parser-perl libnmz7 libnmz7-dev network-manager-dev ??
 
+Screen is turned upside down:
+  add "lcd_rotate=2" to /boot/config.txt
+
+Undervolt symbol in upper right is bugging you:
+  add "avoid_warnings=1" to /boot/config.txt
+
+Add Splash Screen:
+  apt-get install plymouth
+  plymouth-set-default-theme tribar
+
+  Add "quiet splash" to the kernel cmdline /boot/cmdline.txt
+
+
+
 ![alt text](screenshots/screenshot.png "Description goes here")
 
