@@ -264,9 +264,11 @@ class Mp3PiAppLayout(BoxLayout):
 
   def poweroff(self):
     print("poweroff")
+    os.system("poweroff")
 
   def reboot(self):
     print("reboot")
+    os.system("reboot")
 
 class Mp3PiApp(App):
   def build_config(self, config):
