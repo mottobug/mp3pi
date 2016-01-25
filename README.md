@@ -16,7 +16,7 @@ apt-get install libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev 
    gstreamer1.0-plugins-{bad,base,good,ugly} \
    gstreamer1.0-{omx,alsa} python-dev cython
 
-  apt-get install python-pip libjpeg-dev
+  apt-get install python-pip libjpeg-dev python-dbus pulseaudio-utils pulseaudio mtdev-tools
 
   pip install git+https://github.com/kivy/kivy.git@master
 
