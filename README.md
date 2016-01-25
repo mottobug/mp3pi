@@ -1,10 +1,25 @@
 # mp3pi
 
-Requirements:
+Requirements on Ubuntu:
 
 apt-get install mpg123 python-kivy libbluetooth-dev bc
 
 pip install pyalsaaudio pybluez python-networkmanager pygments
+
+Requirements on Raspberry Pi:
+
+(from https://kivy.org/docs/installation/installation-rpi.html)
+
+apt-get install libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
+   pkg-config libgl1-mesa-dev libgles2-mesa-dev \
+   python-setuptools libgstreamer1.0-dev git-core \
+   gstreamer1.0-plugins-{bad,base,good,ugly} \
+   gstreamer1.0-{omx,alsa} python-dev cython
+
+  apt-get install python-pip libjpeg-dev
+
+  pip install git+https://github.com/kivy/kivy.git@master
+
 
 systemctl set-default multi-user.target
 
