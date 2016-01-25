@@ -1,3 +1,4 @@
+
 from kivy.app import App
 
 #from objbrowser import browse
@@ -19,14 +20,15 @@ import threading
 import time
 import os
 import subprocess
-import alsaaudio
 import sys
 import json
 import pprint
-import requests
 import signal
-import NetworkManager
 import re
+
+from networking import NetworkManagerWrapper
+from radiostations import RadioStations
+from audio import AlsaInterface
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -43,191 +45,6 @@ from os import curdir, sep
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 RootApp = "init"
-RoRoRo = "lala"
-
-class NetworkManagerWrapper:
-  
-  ssid = None
-  strength = None
-  frequency = None
-  ip = None
-  psk = None
-  
-  # visible aps
-  aps = []
-  
-  def __init__(self):
-    self.Update()
-  
-  def Update(self):
-    self.aps = []
-
-    for conn in NetworkManager.NetworkManager.ActiveConnections:
-      settings = conn.Connection.GetSettings()
-
-      secrets = conn.Connection.GetSecrets()
-      
-      if secrets['802-11-wireless-security']:
-        if secrets['802-11-wireless-security']['psk']:
-          self.psk = secrets['802-11-wireless-security']['psk']
-
-      for dev in conn.Devices:
-        for addr in dev.Ip4Config.Addresses:
-          self.ip = addr[0]
-        for route in dev.Ip4Config.Routes:
-          time.time()
-          # route
-        for ns in dev.Ip4Config.Nameservers:
-          time.time()
-      
-
-    for device in NetworkManager.NetworkManager.GetDevices():
-      if device.DeviceType != NetworkManager.NM_DEVICE_TYPE_WIFI:
-        continue
-      
-      specific_device = device.SpecificDevice()
-      active = specific_device.ActiveAccessPoint
-      # active.Ssid
-      for ap in device.SpecificDevice().GetAccessPoints():
-        self.aps.append({
-          "ssid": ap.Ssid,
-          "strength": ap.Strength,
-          "frequency": ap.Frequency})
-              
-        if ap.object_path == active.object_path:
-          self.ssid = ap.Ssid
-          self.strength = ap.Strength
-          self.frequency = ap.Frequency
-
-  def ListKnownConnections(self):
-    active = []
-    for x in NetworkManager.NetworkManager.ActiveConnections:
-      active.append(x.Connection.GetSettings()['connection']['id'])
-  
-    connections = []
-    for x in NetworkManager.Settings.ListConnections():
-      if x.GetSettings()['connection']['type'] != "802-11-wireless":
-        continue
-
-      if x.GetSettings()['connection']['id'] in active:
-        current_connection = True
-      else:
-        current_connection = False
-
-      connections.append(
-          (current_connection,
-            x.GetSettings()['connection']['id'], 
-            x.GetSettings()['connection']['type']))
-
-    return(connections)
-
-class AlsaInterface():
-
-  mixer = ""
-
-  def __init__(self): # picks first mixer and set as default
-    all_mixers = self.list_mixers()
-    self.mixer = all_mixers[0]
-    Logger.info("AlsaInterface: Setting default mixer to: " + self.mixer)
-
-  def list_mixers(self, **kwargs):
-    return(alsaaudio.mixers(**kwargs))
-    #for m in alsaaudio.mixers(**kwargs):
-      #print("  '%s'" % m)
-
-  def set_mixer(self, name, args, kwargs):
-      if not name:
-        name = self.mixer
-      try:
-          mixer = alsaaudio.Mixer(name, **kwargs)
-      except alsaaudio.ALSAAudioError:
-          print("No such mixer")
-          sys.exit(1)
-
-      channel = alsaaudio.MIXER_CHANNEL_ALL
-
-      volume = int(args)
-      mixer.setvolume(volume, channel)
-
-  def get_mixer(self, name, kwargs):
-      if not name:
-        name = self.mixer    
-      try:
-          mixer = alsaaudio.Mixer(name, **kwargs)
-      except alsaaudio.ALSAAudioError:
-          print("No such mixer")
-          sys.exit(1)
-      volumes = mixer.getvolume()
-      return(volumes[0])
-
-# pactl set-sink-volume  bluez_sink.0C_A6_94_E3_76_DA 35%
-
-
-##
-#
-##
-class radioStations():
-
-  user_agent = {'User-agent': 'User-Agent: XBMC Addon Radio'}
-
-  data = []
-
-  def __init__(self):
-    url = "http://radio.de/info/menu/broadcastsofcategory?category=_top"
-    response  = requests.get(url, headers = self.user_agent)
-    #print(response.status_code)
-    self.data = response.json()
-
-  def getStations(self):
-    return(self.data)
-
-#   for item in self.data:
-#     print(item['pictureBaseURL'])
-#     print(item['picture1TransName'])
-#     print(item['name'])
-#     print(item['subdomain'])
-#     print(item['bitrate'])
-#     print(item['id'])
-
-  def getStation(self, id):
-    url = "http://radio.de/info/broadcast/getbroadcastembedded?broadcast=" + id
-
-    response = requests.get(url, headers = self.user_agent)
-    #print(response.status_code)
-    station_data = response.json()
-
-    if "errorCode" in station_data.keys():
-      print("no such entry")
-      return(0)
-
-    return(station_data)
-
-  def getImageUrl(self, id):
-    for item in self.data:
-      if str(item['id']) == str(id):
-        return(item['pictureBaseURL'] + item['picture1Name'])
-
-  def getIdByName(self, name):
-    for item in self.data:
-      #if str(item['name']) == name:
-      if item['name'] == name:
-        return(item['id'])
-
-  def getStreamURLbyName(self, name):
-
-    id = self.getIdByName(name)
-    station_data = self.getStation(str(id))
-
-    return(station_data['streamURL'])
-    
-#   print(station_data['link'])
-#   print(station_data['name'])
-#   print(station_data['streamURL'])
-
-#   if "StreamURLs" in station_data.keys():
-#     for item in station_data['streamURLs']:
-#       print(station_item['streamURL'])
-    #print(data['streamURLs'][0]['streamURL'])
 
 class Mp3PiAppLayout(BoxLayout):
 
@@ -262,10 +79,10 @@ class Mp3PiAppLayout(BoxLayout):
     self.ids['search_results_list'].adapter.bind(on_selection_change=self.change_selection)
 
     networklist = []
-    for net in Network.ListKnownConnections():
-      networklist.append(net[1])
-      if net[0] is True:
-        self.ids['wlan_list'].text = net[1]
+    for net in Network.visible_aps:
+      networklist.append(net['ssid'])
+      if net['ssid'] is Network.ssid:
+        self.ids['wlan_list'].text = net[Network.ssid]
 
     self.ids['wlan_list'].values = networklist
     self.ids['wlan_list'].bind(text=self.change_wlan_selection)
@@ -281,7 +98,13 @@ class Mp3PiAppLayout(BoxLayout):
     self.statusthread.start()
 
   def change_wlan_selection(self, spinner, args):
-    print(args)
+    Logger.info("WLAN: user selection %s" % args)
+    Logger.info("WLAN: current WLAN %s" % Network.ssid)
+
+    if args != Network.ssid:
+      Logger.info("WLAN: changing WLAN to %s" % args)
+      Network.activate([args])
+
 
   def change_volume(self, args):
     #os.system("amixer set Master %s%%" % int(args))
@@ -531,8 +354,8 @@ if __name__ == "__main__":
   signal.signal(signal.SIGINT, signal_handler)
 
   Network = NetworkManagerWrapper()
-  Alsa = AlsaInterface()
-  Stations = radioStations()
+  #Alsa = AlsaInterface()
+  Stations = RadioStations()
 
   httpd = HTTPServer(('', 8080), HTTPHandler)
   httpd_thread = threading.Thread(target=httpd.serve_forever)
