@@ -1,9 +1,13 @@
 [Unit]
 Description=mp3pi Kivy App
+After=pulseaudio.service
 
 [Service]
 #Type=forking
-ExecStart=/root/mp3pi/startup.sh
+ExecStart=/usr/bin/python mp3.py
+Environment=XDG_RUNTIME_DIR=/run/user/0
+RestartSec=5
+Restart=alway
 
 [Install]
 WantedBy=multi-user.target
