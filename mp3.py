@@ -1,7 +1,7 @@
 
 from kivy.app import App
 
-#from objbrowser import browse
+from objbrowser import browse
 
 from kivy.uix.scatter import Scatter
 from kivy.uix.label import Label
@@ -13,6 +13,7 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.widget import Widget
 from kivy.properties import NumericProperty
 from kivy.graphics import Color
+from kivy.uix.screenmanager import ScreenManager, Screen, SwapTransition, FadeTransition
 
 import pdb
 
@@ -46,7 +47,7 @@ from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 RootApp = "init"
 
-class Mp3PiAppLayout(BoxLayout):
+class Mp3PiAppLayout(Screen):
 
   global RootApp
   
@@ -78,14 +79,14 @@ class Mp3PiAppLayout(BoxLayout):
     self.search_results.adapter.data.extend((Stations.data))
     self.ids['search_results_list'].adapter.bind(on_selection_change=self.change_selection)
 
-    networklist = []
-    for net in Network.visible_aps:
-      networklist.append(net['ssid'])
-      if net['ssid'] is Network.ssid:
-        self.ids['wlan_list'].text = net[Network.ssid]
+#    networklist = []
+#    for net in Network.visible_aps:
+#      networklist.append(net['ssid'])
+#      if net['ssid'] is Network.ssid:
+#        self.ids['wlan_list'].text = net[Network.ssid]
 
-    self.ids['wlan_list'].values = networklist
-    self.ids['wlan_list'].bind(text=self.change_wlan_selection)
+#    self.ids['wlan_list'].values = networklist
+#    self.ids['wlan_list'].bind(text=self.change_wlan_selection)
 
     #self.ids.volume_slider.value = Alsa.get_mixer("", {})
 
@@ -96,14 +97,6 @@ class Mp3PiAppLayout(BoxLayout):
     self.statusthread = threading.Thread(target=self.status_thread)
     self.statusthread.daemon = True
     self.statusthread.start()
-
-  def change_wlan_selection(self, spinner, args):
-    Logger.info("WLAN: user selection %s" % args)
-    Logger.info("WLAN: current WLAN %s" % Network.ssid)
-
-    if args != Network.ssid:
-      Logger.info("WLAN: changing WLAN to %s" % args)
-      Network.activate([args])
 
 
   def change_volume(self, args):
@@ -294,7 +287,33 @@ class Mp3PiApp(App):
     self.root.statusthread_stop.set()
 
   def build(self):
-    return Mp3PiAppLayout()
+    #sm = ScreenManager(transition=FadeTransition())
+    sm = ScreenManager()
+    sm.add_widget(Mp3PiAppLayout())
+    sm.add_widget(SettingsScreen())
+    return sm
+    #return Mp3PiAppLayout()
+
+class SettingsScreen(Screen):
+  def __init__(self, **kwargs):
+    super(SettingsScreen, self).__init__(**kwargs)
+    networklist = []
+    for net in Network.visible_aps:
+      networklist.append(net['ssid'])
+      if net['ssid'] is Network.ssid:
+        self.ids['wlan_list'].text = net[Network.ssid]
+
+    self.ids['wlan_list'].values = networklist
+    self.ids['wlan_list'].bind(text=self.change_wlan_selection)
+
+  def change_wlan_selection(self, spinner, args):
+    Logger.info("WLAN: user selection %s" % args)
+    Logger.info("WLAN: current WLAN %s" % Network.ssid)
+
+    if args != Network.ssid:
+      Logger.info("WLAN: changing WLAN to %s" % args)
+      Network.activate([args])
+
 
 def signal_handler(signal, frame):
   print("exit");
@@ -350,6 +369,7 @@ class HTTPHandler(BaseHTTPRequestHandler):
       #self.wfile.write(json.dumps(RootApp.search_results.adapter.data, indent=4, separators=('.', ': ')))
     else:
       print(self.path)
+
 
 
 if __name__ == "__main__":
