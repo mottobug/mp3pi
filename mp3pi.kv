@@ -151,8 +151,9 @@
             width: 100
             size_hint_x: None
             on_release: 
-              root.manager.transition.direction = 'right'
-              root.manager.current = 'settings'
+              app.open_settings()
+#              root.manager.transition.direction = 'right'
+#              root.manager.current = 'settings'
           Button:
             text: '<<'
             bold: True

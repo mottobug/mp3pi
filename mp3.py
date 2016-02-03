@@ -14,6 +14,7 @@ from kivy.uix.widget import Widget
 from kivy.properties import NumericProperty
 from kivy.graphics import Color
 from kivy.uix.screenmanager import ScreenManager, Screen, SwapTransition, FadeTransition
+from kivy.uix.settings import SettingsWithTabbedPanel
 
 import pdb
 
@@ -274,16 +275,21 @@ class Mp3PiApp(App):
   global last_activity_time
 
   def build_config(self, config):
-    config.setdefaults('General', {'temp_type': "Metric"})
+    config.setdefaults('General', {'screensaver': "60"})
+    config.setdefaults('General', {'name': "name"})
 
   def build_settings(self, settings):
-    settings.add_json_panel("Weather Settings", self.config, data="""
+    settings.add_json_panel("General", self.config, data="""
       [
-        {"type": "options",
-          "title": "Temperature System",
+        {"type": "numeric",
+          "title": "Screensaver Timeout",
           "section": "General",
-          "key": "temp_type",
-          "options": ["Metric", "Imperial"]
+          "key": "screensaver"
+        },
+        {"type": "string",
+          "title": "String",
+          "section": "General",
+          "key": "name"
         }
       ]"""
     )
@@ -307,6 +313,8 @@ class Mp3PiApp(App):
     global last_activity_time
     #sm = ScreenManager(transition=FadeTransition())
     
+    self.settings_cls = MySettingsWithTabbedPanel
+
     from kivy.core.window import Window
 #    Window.size = (800, 480)
     
@@ -397,6 +405,23 @@ class HTTPHandler(BaseHTTPRequestHandler):
     else:
       print(self.path)
 
+
+class MySettingsWithTabbedPanel(SettingsWithTabbedPanel):
+    """
+    It is not usually necessary to create subclass of a settings panel. There
+    are many built-in types that you can use out of the box
+    (SettingsWithSidebar, SettingsWithSpinner etc.).
+
+    You would only want to create a Settings subclass like this if you want to
+    change the behavior or appearance of an existing Settings class.
+    """
+    def on_close(self):
+        Logger.info("main.py: MySettingsWithTabbedPanel.on_close")
+
+    def on_config_change(self, config, section, key, value):
+        Logger.info(
+            "main.py: MySettingsWithTabbedPanel.on_config_change: "
+            "{0}, {1}, {2}, {3}".format(config, section, key, value))
 
 
 if __name__ == "__main__":
