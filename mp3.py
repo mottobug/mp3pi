@@ -1,7 +1,7 @@
 
 from kivy.app import App
 
-from objbrowser import browse
+#from objbrowser import browse
 
 from kivy.uix.scatter import Scatter
 from kivy.uix.label import Label
@@ -231,13 +231,12 @@ class Mp3PiAppLayout(Screen):
         if Stations.no_data == False:
           self.search_results.adapter.data.extend((Stations.data))
       
-      if (time.time() - last_activity_time) > 5:
+      # screensaver
+      if (time.time() - last_activity_time) > 60:
         ScreenSaver.display_off()
       else:
         ScreenSaver.display_on()
 
-      #self.ids.wlanstatus.canvas.clear()
-      #self.ids.wlanstatus.canvas.ask_update()
       time.sleep(.5)
     
   def change_image(self, station_name):

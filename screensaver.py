@@ -6,8 +6,6 @@ class Rpi_ScreenSaver:
   
   running_on_rpi = False
 
-  state = False
-
   def __init__(self):
     if os.path.exists(self.rpi_display) is True:
       self.running_on_rpi = True

@@ -1,7 +1,7 @@
 
 import requests
 
-from objbrowser import browse
+#from objbrowser import browse
 
 ##
 #

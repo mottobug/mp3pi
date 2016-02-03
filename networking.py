@@ -2,7 +2,7 @@
 import time
 import NetworkManager
 
-from objbrowser import browse
+#from objbrowser import browse
 
 class NetworkManagerWrapper:
   
