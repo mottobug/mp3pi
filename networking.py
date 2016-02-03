@@ -83,13 +83,15 @@ class NetworkManagerWrapper:
       device = device.SpecificDevice()
       active = device.ActiveAccessPoint
       aps = device.GetAccessPoints()
-      for ap in aps:
-        prefix = '* ' if ap.object_path == active.object_path else '  '
-        #print("%s %s %s" % (prefix, ap.Ssid, ap.Strength))
-        self.visible_aps.append({
-          "ssid": ap.Ssid,
-          "strength": ap.Strength,
-          "frequency": ap.Frequency})
+      
+      if hasattr(active, 'object_path'):
+        for ap in aps:
+          prefix = '* ' if ap.object_path == active.object_path else '  '
+          #print("%s %s %s" % (prefix, ap.Ssid, ap.Strength))
+          self.visible_aps.append({
+            "ssid": ap.Ssid,
+            "strength": ap.Strength,
+            "frequency": ap.Frequency})
 
   def ListKnownConnections(self):
     active = []

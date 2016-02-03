@@ -76,17 +76,7 @@ class Mp3PiAppLayout(Screen):
     
     RootApp = self
 
-    self.search_results.adapter.data.extend((Stations.data))
     self.ids['search_results_list'].adapter.bind(on_selection_change=self.change_selection)
-
-#    networklist = []
-#    for net in Network.visible_aps:
-#      networklist.append(net['ssid'])
-#      if net['ssid'] is Network.ssid:
-#        self.ids['wlan_list'].text = net[Network.ssid]
-
-#    self.ids['wlan_list'].values = networklist
-#    self.ids['wlan_list'].bind(text=self.change_wlan_selection)
 
     #self.ids.volume_slider.value = Alsa.get_mixer("", {})
 
@@ -207,7 +197,11 @@ class Mp3PiAppLayout(Screen):
       if not int(time.time()) % 5:
         Network.Update()
 
-      self.ids.wlanstatus.text = "%s %s%%\n%s" % (Network.ssid, Network.strength, Network.ip)
+      if Network.ip is None: 
+        self.ids.wlanstatus.text = "No network connection"
+      else:
+        self.ids.wlanstatus.text = "%s %s%%\n%s" % (Network.ssid, Network.strength, Network.ip)
+
       #self.ids.wlanstatus.text = "%s %s%%\n%s" % ("myNetwork", Network.strength, "192.168.47.11")
       
       lines = []
@@ -227,6 +221,14 @@ class Mp3PiAppLayout(Screen):
       if Network.strength < 70:
         for i in lines[0:1]:
           i.a = .5
+      
+
+      if Stations.no_data == True:
+        print("no data")
+        Stations.update()
+        if Stations.no_data == False:
+          self.search_results.adapter.data.extend((Stations.data))
+
 
       #self.ids.wlanstatus.canvas.clear()
       #self.ids.wlanstatus.canvas.ask_update()
@@ -283,8 +285,16 @@ class Mp3PiApp(App):
     # The Kivy event loop is about to stop, set a stop signal;
     # otherwise the app window will close, but the Python process will
     # keep running until all secondary threads exit.
-    self.root.stop.set()
-    self.root.statusthread_stop.set()
+    
+    #layout.clear_widgets()
+    #browse(self)
+    True
+
+    #main = self.root.manager.get_screen('main').layout
+    #main.stop.set()
+    #self.root.stop.set()
+
+    #self.root.statusthread_stop.set()
 
   def build(self):
     #sm = ScreenManager(transition=FadeTransition())

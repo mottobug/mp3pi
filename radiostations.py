@@ -1,6 +1,8 @@
 
 import requests
 
+from objbrowser import browse
+
 ##
 #
 ##
@@ -9,12 +11,29 @@ class RadioStations():
   user_agent = {'User-agent': 'User-Agent: XBMC Addon Radio'}
 
   data = []
+  no_data = True
 
-  def __init__(self):
+  #def __init__(self):
+  #  self.update()
+
+  def update(self):
     url = "http://radio.de/info/menu/broadcastsofcategory?category=_top"
-    response  = requests.get(url, headers = self.user_agent)
-    #print(response.status_code)
-    self.data = response.json()
+    #url = "http://radio.de/info/account/getmostwantedbroadcastlists?sizeoflists=20"
+    #url = "http://radio.de/info/broadcast/editorialreccomendationsembedded"
+
+    try:
+      response  = requests.get(url, headers = self.user_agent)
+      #print(response.status_code)
+      self.data = response.json()
+      self.no_data = False
+    except requests.HTTPError, e:
+      print("HTTP error %s", e.code)
+      self.no_data = False
+    except requests.ConnectionError, e:
+      self.data.append({'name': 'no station data'}) 
+      self.no_data = True
+      print("Connection error %s", e)
+
 
   def getStations(self):
     return(self.data)
