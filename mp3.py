@@ -30,6 +30,7 @@ import re
 from networking import NetworkManagerWrapper
 from radiostations import RadioStations
 from audio import AlsaInterface
+from screensaver import Rpi_ScreenSaver
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -49,7 +50,7 @@ RootApp = "init"
 
 class Mp3PiAppLayout(Screen):
 
-  global RootApp
+  global RootApp, last_activity_time
   
   isPlaying = False
   proc = None
@@ -59,6 +60,7 @@ class Mp3PiAppLayout(Screen):
 
   statusthread_stop = threading.Event()
   statusthread = None
+
 
   def args_converter(self, row_index, an_obj):
     if row_index % 2:
@@ -200,7 +202,7 @@ class Mp3PiAppLayout(Screen):
       if Network.ip is None: 
         self.ids.wlanstatus.text = "No network connection"
       else:
-        self.ids.wlanstatus.text = "%s %s%%\n%s" % (Network.ssid, Network.strength, Network.ip)
+        self.ids.wlanstatus.text = "%s %s%%\n%s\n%s" % (Network.ssid, Network.strength, Network.ip, time.strftime("%H:%M", time.gmtime()))
 
       #self.ids.wlanstatus.text = "%s %s%%\n%s" % ("myNetwork", Network.strength, "192.168.47.11")
       
@@ -228,7 +230,11 @@ class Mp3PiAppLayout(Screen):
         Stations.update()
         if Stations.no_data == False:
           self.search_results.adapter.data.extend((Stations.data))
-
+      
+      if (time.time() - last_activity_time) > 5:
+        ScreenSaver.display_off()
+      else:
+        ScreenSaver.display_on()
 
       #self.ids.wlanstatus.canvas.clear()
       #self.ids.wlanstatus.canvas.ask_update()
@@ -266,6 +272,8 @@ class Mp3PiAppLayout(Screen):
     os.system("reboot")
 
 class Mp3PiApp(App):
+  global last_activity_time
+
   def build_config(self, config):
     config.setdefaults('General', {'temp_type': "Metric"})
 
@@ -297,7 +305,17 @@ class Mp3PiApp(App):
     #self.root.statusthread_stop.set()
 
   def build(self):
+    global last_activity_time
     #sm = ScreenManager(transition=FadeTransition())
+    
+    from kivy.core.window import Window
+#    Window.size = (800, 480)
+    
+    def on_motion(self, etype, motionevent):
+      global last_activity_time
+      last_activity_time = time.time()
+    Window.bind(on_motion=on_motion)
+
     sm = ScreenManager()
     sm.add_widget(Mp3PiAppLayout())
     sm.add_widget(SettingsScreen())
@@ -388,11 +406,15 @@ if __name__ == "__main__":
   Network = NetworkManagerWrapper()
   #Alsa = AlsaInterface()
   Stations = RadioStations()
+  ScreenSaver = Rpi_ScreenSaver()
+  
 
   httpd = HTTPServer(('', 8080), HTTPHandler)
   httpd_thread = threading.Thread(target=httpd.serve_forever)
   httpd_thread.daemon = True
   httpd_thread.start()
+
+  last_activity_time = time.time()
 
   Mp3PiApp().run()
 
