@@ -1,7 +1,7 @@
 
 from kivy.app import App
 
-#from objbrowser import browse
+from objbrowser import browse
 
 from kivy.uix.scatter import Scatter
 from kivy.uix.label import Label
@@ -15,6 +15,7 @@ from kivy.properties import NumericProperty
 from kivy.graphics import Color
 from kivy.uix.screenmanager import ScreenManager, Screen, SwapTransition, FadeTransition
 from kivy.uix.settings import SettingsWithTabbedPanel
+from kivy.config import Config
 
 import pdb
 
@@ -48,10 +49,11 @@ from os import curdir, sep
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 RootApp = "init"
+ConfigObject = None
 
 class Mp3PiAppLayout(Screen):
 
-  global RootApp, last_activity_time
+  global RootApp, last_activity_time, ConfigObject
   
   isPlaying = False
   proc = None
@@ -192,6 +194,8 @@ class Mp3PiAppLayout(Screen):
       time.sleep(.1)
   
   def status_thread(self):
+    global ConfigObject
+
     while True:
       if self.statusthread_stop.is_set():
         self.statusthread_stop.clear()
@@ -203,10 +207,11 @@ class Mp3PiAppLayout(Screen):
       if Network.ip is None: 
         self.ids.wlanstatus.text = "No network connection"
       else:
-        self.ids.wlanstatus.text = "%s %s%%\n%s\n%s" % (Network.ssid, Network.strength, Network.ip, time.strftime("%H:%M", time.gmtime()))
+        self.ids.wlanstatus.text = "%s %s%%\n%s\n%s" % (Network.ssid, Network.strength, Network.ip, time.strftime("%H:%M", time.localtime()))
 
       #self.ids.wlanstatus.text = "%s %s%%\n%s" % ("myNetwork", Network.strength, "192.168.47.11")
       
+      # wlan symbol
       lines = []
       for i in self.ids.wlanstatus.canvas.get_group(None)[1:]:
         if type(i) is Color:
@@ -228,16 +233,31 @@ class Mp3PiAppLayout(Screen):
 
       if Stations.no_data == True:
         print("no data")
-        Stations.update()
-        if Stations.no_data == False:
-          self.search_results.adapter.data.extend((Stations.data))
+        if ConfigObject.get('General', 'playlist') == "radio.de":
+          Stations.update()
+          if Stations.no_data == False:
+            del self.search_results.adapter.data[:]
+            self.search_results.adapter.data.extend((Stations.data))
+        if ConfigObject.get('General', 'playlist') == "custom":
+          Stations.load_playlist("custom")
+          if Stations.no_data == False:
+            del self.search_results.adapter.data[:]
+            self.search_results.adapter.data.extend((Stations.data))
       
       # screensaver
-      if (time.time() - last_activity_time) > 60:
-        ScreenSaver.display_off()
-      else:
-        ScreenSaver.display_on()
+      timeout = ConfigObject.get('General', 'screensaver')
+      if timeout < 60:
+        timeout = 60
 
+      if (time.time() - last_activity_time) > int(timeout):
+        if ScreenSaver.display_state is True:
+          Logger.info("ScreenSaver: enabling screensaver")
+          ScreenSaver.display_off()
+      else:
+        if ScreenSaver.display_state is False:
+          Logger.info("ScreenSaver: disabling screensaver")
+          ScreenSaver.display_on()
+      
       time.sleep(.5)
     
   def change_image(self, station_name):
@@ -251,6 +271,7 @@ class Mp3PiAppLayout(Screen):
 
   def next(self):
     self.stop.set()
+    browse(self.search_results.adapter)
     if self.search_results.adapter.selection:
       index = self.search_results.adapter.selection[0].index
       if index < len(self.search_results.adapter.data):
@@ -272,11 +293,12 @@ class Mp3PiAppLayout(Screen):
     os.system("reboot")
 
 class Mp3PiApp(App):
-  global last_activity_time
+  global last_activity_time, ConfigObject
 
   def build_config(self, config):
     config.setdefaults('General', {'screensaver': "60"})
     config.setdefaults('General', {'name': "name"})
+    config.setdefaults('General', {'playlist': "radio.de"})
 
   def build_settings(self, settings):
     settings.add_json_panel("General", self.config, data="""
@@ -290,6 +312,12 @@ class Mp3PiApp(App):
           "title": "String",
           "section": "General",
           "key": "name"
+        },
+        {"type": "options",
+          "title": "Playlist",
+          "section": "General",
+          "options": ["radio.de", "custom"],
+          "key": "playlist"
         }
       ]"""
     )
@@ -310,7 +338,7 @@ class Mp3PiApp(App):
     #self.root.statusthread_stop.set()
 
   def build(self):
-    global last_activity_time
+    global last_activity_time, ConfigObject
     #sm = ScreenManager(transition=FadeTransition())
     
     self.settings_cls = MySettingsWithTabbedPanel
@@ -322,6 +350,8 @@ class Mp3PiApp(App):
       global last_activity_time
       last_activity_time = time.time()
     Window.bind(on_motion=on_motion)
+
+    ConfigObject = self.config
 
     sm = ScreenManager()
     sm.add_widget(Mp3PiAppLayout())
@@ -407,21 +437,15 @@ class HTTPHandler(BaseHTTPRequestHandler):
 
 
 class MySettingsWithTabbedPanel(SettingsWithTabbedPanel):
-    """
-    It is not usually necessary to create subclass of a settings panel. There
-    are many built-in types that you can use out of the box
-    (SettingsWithSidebar, SettingsWithSpinner etc.).
+  def on_close(self):
+    Logger.info("main.py: MySettingsWithTabbedPanel.on_close")
 
-    You would only want to create a Settings subclass like this if you want to
-    change the behavior or appearance of an existing Settings class.
-    """
-    def on_close(self):
-        Logger.info("main.py: MySettingsWithTabbedPanel.on_close")
-
-    def on_config_change(self, config, section, key, value):
-        Logger.info(
-            "main.py: MySettingsWithTabbedPanel.on_config_change: "
-            "{0}, {1}, {2}, {3}".format(config, section, key, value))
+  def on_config_change(self, config, section, key, value):
+    if key == "playlist":
+      Stations.no_data = True
+    Logger.info(
+      "main.py: MySettingsWithTabbedPanel.on_config_change: "
+      "{0}, {1}, {2}, {3}".format(config, section, key, value))
 
 
 if __name__ == "__main__":

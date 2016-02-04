@@ -146,10 +146,37 @@
                 width: 3
                 points: self.x + 50, self.y + 45, self.x + 50, self.y + 65
           Button:
-            text: "S"
+            text: ""
             bold: True
             width: 100
             size_hint_x: None
+
+            canvas:
+              Color:
+                rgba: 1, 1, 1, 1
+              Line:
+                width: 3
+                circle: (self.x + 50, self.y + 40, 20, 0, 360)
+              Line:
+                width: 6
+                points: self.x + 50, self.y + 65, self.x + 50, self.y + 65
+              Line:
+                width: 6
+                points: self.x + 50, self.y + 15, self.x + 50, self.y + 15
+              Line:
+                width: 6
+                points: self.x + 30, self.y + 25, self.x + 30, self.y + 25
+              Line:
+                width: 6
+                points: self.x + 70, self.y + 25, self.x + 70, self.y + 25
+              Line:
+                width: 6
+                points: self.x + 30, self.y + 55, self.x + 30, self.y + 55    
+              Line:
+                width: 6
+                points: self.x + 70, self.y + 55, self.x + 70, self.y + 55
+
+
             on_release: 
               app.open_settings()
 #              root.manager.transition.direction = 'right'

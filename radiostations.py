@@ -1,5 +1,7 @@
 
 import requests
+import os
+import json
 
 #from objbrowser import browse
 
@@ -15,6 +17,19 @@ class RadioStations():
 
   #def __init__(self):
   #  self.update()
+  
+  def load_playlist(self, playlist):
+    if playlist == "custom":
+      filename = playlist + ".json"
+      if os.path.exists(filename) is True:
+        fd = open(filename, "r")
+        self.data = json.load(fd)
+        self.no_data = False
+      else:
+        print("filename missing %s" % filename)
+    else:
+      self.update()
+
 
   def update(self):
     url = "http://radio.de/info/menu/broadcastsofcategory?category=_top"
