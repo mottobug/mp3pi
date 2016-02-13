@@ -29,7 +29,8 @@ import pprint
 import signal
 import re
 
-from networking import NetworkManagerWrapper
+#from networking import NetworkManagerWrapper
+from nmcli import nmcli
 from radiostations import RadioStations
 from audio import AlsaInterface
 from screensaver import Rpi_ScreenSaver
@@ -195,6 +196,8 @@ class Mp3PiAppLayout(Screen):
   
   def status_thread(self):
     global ConfigObject
+    
+    connection = NMCLI.current_connection() 
 
     while True:
       if self.statusthread_stop.is_set():
@@ -202,12 +205,13 @@ class Mp3PiAppLayout(Screen):
         return
 
       if not int(time.time()) % 5:
-        Network.Update()
-
-      if Network.ip is None: 
+        connection = NMCLI.current_connection() 
+      
+      ip = NMCLI.get_ip()
+      if ip is None: 
         self.ids.wlanstatus.text = "No network connection"
       else:
-        self.ids.wlanstatus.text = "%s %s%%\n%s\n%s" % (Network.ssid, Network.strength, Network.ip, time.strftime("%H:%M", time.localtime()))
+        self.ids.wlanstatus.text = "%s %s%%\n%s\n%s" % (connection.get('SSID', None), connection.get('SIGNAL', None), ip, time.strftime("%H:%M", time.localtime()))
 
       #self.ids.wlanstatus.text = "%s %s%%\n%s" % ("myNetwork", Network.strength, "192.168.47.11")
       
@@ -217,19 +221,20 @@ class Mp3PiAppLayout(Screen):
         if type(i) is Color:
           lines.append(i)
           i.a = 1
-
-      if Network.strength < 50:
-        for i in lines[0:3]:
-          i.a = .5
-
-      if Network.strength < 60:
-        for i in lines[0:2]:
-          i.a = .5
-
-      if Network.strength < 70:
-        for i in lines[0:1]:
-          i.a = .5
       
+      if connection is not None:
+        if connection['SIGNAL'] < 50:
+          for i in lines[0:3]:
+            i.a = .5
+
+        if connection['SIGNAL'] < 60:
+          for i in lines[0:2]:
+            i.a = .5
+
+        if connection['SIGNAL'] < 70:
+          for i in lines[0:1]:
+            i.a = .5
+        
 
       if Stations.no_data == True:
         print("no data")
@@ -363,21 +368,21 @@ class SettingsScreen(Screen):
   def __init__(self, **kwargs):
     super(SettingsScreen, self).__init__(**kwargs)
     networklist = []
-    for net in Network.visible_aps:
-      networklist.append(net['ssid'])
-      if net['ssid'] is Network.ssid:
-        self.ids['wlan_list'].text = net[Network.ssid]
+#    for net in Network.visible_aps:
+#      networklist.append(net['ssid'])
+#      if net['ssid'] is Network.ssid:
+#        self.ids['wlan_list'].text = net[Network.ssid]
 
-    self.ids['wlan_list'].values = networklist
-    self.ids['wlan_list'].bind(text=self.change_wlan_selection)
+#    self.ids['wlan_list'].values = networklist
+#    self.ids['wlan_list'].bind(text=self.change_wlan_selection)
 
   def change_wlan_selection(self, spinner, args):
     Logger.info("WLAN: user selection %s" % args)
-    Logger.info("WLAN: current WLAN %s" % Network.ssid)
+#    Logger.info("WLAN: current WLAN %s" % Network.ssid)
 
-    if args != Network.ssid:
-      Logger.info("WLAN: changing WLAN to %s" % args)
-      Network.activate([args])
+#    if args != Network.ssid:
+#      Logger.info("WLAN: changing WLAN to %s" % args)
+#      Network.activate([args])
 
 
 def signal_handler(signal, frame):
@@ -451,7 +456,8 @@ class MySettingsWithTabbedPanel(SettingsWithTabbedPanel):
 if __name__ == "__main__":
   signal.signal(signal.SIGINT, signal_handler)
 
-  Network = NetworkManagerWrapper()
+  #Network = NetworkManagerWrapper()
+  NMCLI = nmcli() 
   #Alsa = AlsaInterface()
   Stations = RadioStations()
   ScreenSaver = Rpi_ScreenSaver()
