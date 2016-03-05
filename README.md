@@ -22,6 +22,15 @@ pip install git+https://github.com/kivy/kivy.git@master
 apt-get install python-pip libjpeg-dev python-dbus pulseaudio-utils pulseaudio mtdev-tools mpg123 libbluetooth-dev bc
 ```
 
+Modifications on ~/.kivy/config.ini
+```
+[input]
+mouse = mouse
+%(name)s = probesysfs,provider=hidinput
+mtdev_%(name)s = probesysfs,provider=mtdev
+hid_%(name)s = probesysfs,provider=hidinput
+```
+
 ```
 systemctl set-default multi-user.target
 
