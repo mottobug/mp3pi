@@ -207,6 +207,7 @@ class Mp3PiAppLayout(Screen):
         connection = NMCLI.current_connection() 
       
       ip = NMCLI.get_ip()
+
       if ip is None: 
         self.ids.wlanstatus.text = "No network connection"
       else:

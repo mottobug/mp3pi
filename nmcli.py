@@ -90,6 +90,7 @@ class nmcli:
   def get_ip(self):
     data = self.connection_detail()
     if data is not False:
+      print(data)
       return(data.get('IP4.ADDRESS[1]', None))
 
 
