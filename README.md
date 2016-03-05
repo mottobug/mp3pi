@@ -19,7 +19,19 @@ apt-get install libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev 
 
 pip install git+https://github.com/kivy/kivy.git@master
 
-apt-get install python-pip libjpeg-dev python-dbus pulseaudio-utils pulseaudio mtdev-tools mpg123 libbluetooth-dev bc
+apt-get install python-pip libjpeg-dev python-dbus pulseaudio-utils pulseaudio mtdev-tools libbluetooth-dev bc
+```
+
+Install recent version of mpg123:
+```
+wget http://www.mpg123.de/download/mpg123-1.23.2.tar.bz2
+tar xvjf mpg123-1.23.2.tar.bz2
+cd mpg123...
+./configure --with-audio=pulse
+make -j4
+make install
+echo "/usr/local/lib" > /etc/ld.so.conf.d/locallib.conf
+ldconfig
 ```
 
 Modifications on ~/.kivy/config.ini
@@ -52,8 +64,10 @@ https://github.com/graysky2/pulseaudio-ctl
   add "avoid_warnings=1" to /boot/config.txt
 
 ## Add Splash Screen:
+```
   apt-get install plymouth
   plymouth-set-default-theme tribar
+```
 
   Add "quiet splash" to the kernel cmdline /boot/cmdline.txt
 

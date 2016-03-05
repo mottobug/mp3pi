@@ -276,7 +276,7 @@ class Mp3PiAppLayout(Screen):
 
   def next(self):
     self.stop.set()
-    browse(self.search_results.adapter)
+    #browse(self.search_results.adapter)
     if self.search_results.adapter.selection:
       index = self.search_results.adapter.selection[0].index
       if index < len(self.search_results.adapter.data):
