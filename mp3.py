@@ -461,6 +461,8 @@ if __name__ == "__main__":
   #Alsa = AlsaInterface()
   Stations = RadioStations()
   ScreenSaver = Rpi_ScreenSaver()
+
+  ScreenSaver.display_on()
   
 
   httpd = HTTPServer(('', 8080), HTTPHandler)

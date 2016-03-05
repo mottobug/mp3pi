@@ -1,6 +1,7 @@
 
 import subprocess
 import os
+import re
 
 class nmcli:
   def shell(self, args):
@@ -90,8 +91,8 @@ class nmcli:
   def get_ip(self):
     data = self.connection_detail()
     if data is not False:
-      print(data)
-      return(data.get('IP4.ADDRESS[1]', None))
+      ip = re.findall( r'[0-9]+(?:\.[0-9]+){3}', data.get('IP4.ADDRESS[1]', None) )
+      return(ip[0])
 
 
 
