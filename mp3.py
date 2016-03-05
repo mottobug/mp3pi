@@ -1,7 +1,6 @@
 
 from kivy.app import App
 
-from objbrowser import browse
 
 from kivy.uix.scatter import Scatter
 from kivy.uix.label import Label
@@ -32,7 +31,7 @@ import re
 #from networking import NetworkManagerWrapper
 from nmcli import nmcli
 from radiostations import RadioStations
-from audio import AlsaInterface
+#from audio import AlsaInterface
 from screensaver import Rpi_ScreenSaver
 
 reload(sys)
