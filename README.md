@@ -79,7 +79,7 @@ https://github.com/graysky2/pulseaudio-ctl
   nmcli device wifi list
 
 ## Wifi connect to AP:
-  nmcli device wifi connect "<SSID>" password "<WLANPSK>"
+  nmcli device wifi connect "SSID" password "WLANPSK"
 
 ## Screenshots
 ![alt text](screenshots/screenshot.png "Description goes here")
