@@ -19,11 +19,12 @@ apt-get install libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev 
 
 pip install git+https://github.com/kivy/kivy.git@master
 
-apt-get install python-pip libjpeg-dev python-dbus pulseaudio-utils pulseaudio mtdev-tools libbluetooth-dev bc
+apt-get install python-pip libjpeg-dev python-dbus pulseaudio-utils pulseaudio mtdev-tools libbluetooth-dev bc network-manager
 ```
 
 Install recent version of mpg123:
 ```
+apt-get install libpulse-dev
 wget http://www.mpg123.de/download/mpg123-1.23.2.tar.bz2
 tar xvjf mpg123-1.23.2.tar.bz2
 cd mpg123...
@@ -57,6 +58,9 @@ https://github.com/graysky2/pulseaudio-ctl
 ?? gir1.2-networkmanager-1.0 gir1.2-nmgtk-1.0 libnm-dev libnm-glib-dev libnm-glib-vpn-dev libnm-gtk-dev
   libnm-util-dev libnmap-parser-perl libnmz7 libnmz7-dev network-manager-dev ??
 
+## Disable WLAN power management:
+  echo "KERNEL==\"wlan*\", ACTION==\"add\", RUN+=\"/sbin/iwconfig wlan0 power off\"" > /etc/udev/rules.d/10-wlan-powersavings-off.rules
+
 ## Screen is turned upside down:
   add "lcd_rotate=2" to /boot/config.txt
 
@@ -71,7 +75,12 @@ https://github.com/graysky2/pulseaudio-ctl
 
   Add "quiet splash" to the kernel cmdline /boot/cmdline.txt
 
+## Wifi list networks:
+  nmcli device wifi list
 
+## Wifi connect to AP:
+  nmcli device wifi connect "<SSID>" password "<WLANPSK>"
 
+## Screenshots
 ![alt text](screenshots/screenshot.png "Description goes here")
 
