@@ -2,7 +2,7 @@
 
 ## Requirements on Ubuntu:
 
-apt-get install mpg123 python-kivy libbluetooth-dev bc pulseaudio
+apt-get install libbluetooth-dev bc pulseaudio
 
 pip install pyalsaaudio pybluez python-networkmanager pygments
 
@@ -17,16 +17,17 @@ apt-get install libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev 
    gstreamer1.0-plugins-{bad,base,good,ugly} \
    gstreamer1.0-{omx,alsa} python-dev cython
 
-pip install git+https://github.com/kivy/kivy.git@master
-
 apt-get install python-pip libjpeg-dev python-dbus pulseaudio-utils pulseaudio mtdev-tools libbluetooth-dev bc network-manager
+
+pip install --upgrade Cython==0.23
+pip install git+https://github.com/kivy/kivy.git@master
 ```
 
 Install recent version of mpg123:
 ```
 apt-get install libpulse-dev
-wget http://www.mpg123.de/download/mpg123-1.23.2.tar.bz2
-tar xvjf mpg123-1.23.2.tar.bz2
+wget http://mpg123.de/download/mpg123-1.23.8.tar.bz2
+tar xvjf mpg123-1.23.8.tar.bz2
 cd mpg123...
 ./configure --with-audio=pulse
 make -j4

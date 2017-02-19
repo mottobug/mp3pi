@@ -1,5 +1,6 @@
 [Unit]
 Description=Pulseaudio Daemon
+Requires=dbus.service
 
 [Service]
 #Type=forking
