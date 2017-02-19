@@ -44,6 +44,7 @@ mtdev_%(name)s = probesysfs,provider=mtdev
 hid_%(name)s = probesysfs,provider=hidinput
 ```
 
+
 ```
 systemctl set-default multi-user.target
 
@@ -80,6 +81,14 @@ https://github.com/graysky2/pulseaudio-ctl
 
 ## Wifi connect to AP:
   nmcli device wifi connect "SSID" password "WLANPSK"
+
+## Optional Stuff
+Change Hostname
+```
+echo "raspiradio" > /etc/hostname
+sed -i "s/127.0.1.1.*raspberrypi/127.0.1.1\traspiradio/g" /etc/hosts
+```
+
 
 ## Screenshots
 ![alt text](screenshots/screenshot.png "Description goes here")
