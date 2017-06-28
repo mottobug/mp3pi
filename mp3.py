@@ -51,6 +51,9 @@ from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 RootApp = "init"
 ConfigObject = None
 
+class SaverScreen(Screen):
+  pass
+
 class Mp3PiAppLayout(Screen):
 
   global RootApp, last_activity_time, ConfigObject
@@ -257,10 +260,12 @@ class Mp3PiAppLayout(Screen):
       if (time.time() - last_activity_time) > int(timeout):
         if ScreenSaver.display_state is True:
           Logger.info("ScreenSaver: enabling screensaver")
+          self.manager.current = 'screensaver'
           ScreenSaver.display_off()
       else:
         if ScreenSaver.display_state is False:
           Logger.info("ScreenSaver: disabling screensaver")
+          self.manager.current = 'main'
           ScreenSaver.display_on()
       
       time.sleep(.5)
@@ -361,6 +366,7 @@ class Mp3PiApp(App):
     sm = ScreenManager()
     sm.add_widget(Mp3PiAppLayout())
     sm.add_widget(SettingsScreen())
+    sm.add_widget(SaverScreen())
     return sm
     #return Mp3PiAppLayout()
 

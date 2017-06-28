@@ -19,15 +19,21 @@ apt-get install libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev 
 
 apt-get install python-pip libjpeg-dev python-dbus pulseaudio-utils pulseaudio mtdev-tools libbluetooth-dev bc network-manager
 
-pip install --upgrade Cython==0.23
+#pip install --upgrade Cython==0.23
+pip install --upgrade Cython
 pip install git+https://github.com/kivy/kivy.git@master
+```
+
+## Turn auto exit in pulseaudio off
+```
+echo "exit-idle-time = -1" >> /etc/pulse/daemon.conf
 ```
 
 Install recent version of mpg123:
 ```
 apt-get install libpulse-dev
-wget http://mpg123.de/download/mpg123-1.23.8.tar.bz2
-tar xvjf mpg123-1.23.8.tar.bz2
+wget https://www.mpg123.de/download/mpg123-1.25.0.tar.bz2
+tar xvjf mpg123-1.25.0.tar.bz2
 cd mpg123...
 ./configure --with-audio=pulse
 make -j4
@@ -77,6 +83,9 @@ https://github.com/graysky2/pulseaudio-ctl
 
   Add "quiet splash" to the kernel cmdline /boot/cmdline.txt
 
+## Turn off console screensaver (1 hour by default)
+  add "consoleblank=0" /boot/cmdline.txt
+
 ## Wifi list networks:
   nmcli device wifi list
 
@@ -88,6 +97,15 @@ Change Hostname
 ```
 echo "raspiradio" > /etc/hostname
 sed -i "s/127.0.1.1.*raspberrypi/127.0.1.1\traspiradio/g" /etc/hosts
+```
+
+## Play with custom Playlists
+```
+curl -A "User-Agent: XBMC Addon Radio" 'http://radio.de/info/menu/broadcastsofcategory?category=_top' | jq "." > radio.de.json
+
+jq '[.[]|select(.name=="NDR 2" or .name=="RADIO BOB!")]' < radio.de.json
+
+
 ```
 
 
