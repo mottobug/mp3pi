@@ -1,15 +1,10 @@
-#:import sla kivy.adapters.simplelistadapter
-#:import label kivy.uix.label
 #:import ListItemButton kivy.uix.listview.ListItemButton
+#:import ListView kivy.uix.listview.ListView
 #:import ListAdapter kivy.adapters.listadapter.ListAdapter
-#:import DictAdapter kivy.adapters.dictadapter.DictAdapter
 #:import Factory kivy.factory.Factory
 
 <ListItemButtonTitle@ListItemButton>:
-#  selected_color:   [24.0, 1.0, 0.39, 0.6]
-#  deselected_color: [1.0, 1.0, 1.0, 0.0]
   font_size: 30
-#  size_hint: None, None
   size_hint_y: None
   height: 60
   line_height: 1
@@ -17,9 +12,15 @@
 <Mp3PiAppLayout>:
   name: 'main'
   fullscreen: True
-  
-  search_results: search_results_list
 
+  # Declaration of widgets for python code
+  imageid: imageid
+  wlanstatus: wlanstatus
+  search_results_list: search_results_list
+  search_results_slider: search_results_slider
+  infotext: infotext
+  volume_slider: volume_slider
+  
   canvas:
     Color:
       rgba: 1, 1, 1, .15
@@ -41,11 +42,11 @@
 #                size: self.size
         AsyncImage:
           id: imageid
-          #size_hint: None, None
-          size_hint_x: 1
-          size_hint_y: 1
+          #size_hint: (None, None)
+          size_hint: (1.0, 1.0)
           anchor_y: 'top'
           allow_stretch: True
+          source: 'RaspPi.png'
 #              canvas:
 #                Color:
 #                  rgba: 0, 1, 0, .5
@@ -53,14 +54,12 @@
 #                  pos: self.pos
 #                  size: self.size
 
-#            WlanSymbol:
-
+#       WlanSymbol:
         Label:
+          id: wlanstatus
           text: ''
           text_size: self.size
           halign: 'left'
-          id: wlanstatus
-
           canvas:
             Color:
               rgba: 1, 1, 1, .5
@@ -82,20 +81,27 @@
             Line:
               width: 2 
               circle: (self.x + 30, self.y + 60, 1)
-    
-  
-      ListView:
+
+      MyListView:
         id: search_results_list
-#            height: 50 
-#            size_hint_y: None
-#            size_hint: 0.9, 0.9
+        #height: 50 
+#       size_hint_y: None
+#       size_hint: (0.9, 0.9)
         adapter:
           ListAdapter(data=[],
           selection_mode='single',
           cls=Factory.ListItemButtonTitle,
           args_converter=root.args_converter
           )
-
+      
+      Slider:
+        id: search_results_slider
+        min: 0
+        max: 1
+        step: 0.01
+        value: 1
+        orientation: 'vertical'
+        size_hint: (0.1, 0.95)
 
     BoxLayout:
       orientation: 'horizontal'
@@ -105,10 +111,10 @@
         orientation: 'vertical'
         BoxLayout:
           Label:
+            id: infotext
             text: ""
             text_size: self.size
             halign: 'left'
-            id: icytags
         BoxLayout:
           popup: popup.__self__
           id: bl
@@ -130,6 +136,12 @@
                 width: 100
                 text: "Reboot"
                 on_release: root.reboot()
+                on_release: popup.dismiss()
+              Button:
+                size_hint_y: None
+                width: 100
+                text: "Quit"
+                on_release: root.quit()
                 on_release: popup.dismiss()
 
           Button: 
@@ -198,94 +210,102 @@
       BoxLayout:
         size_hint_x: .08
         Slider:
-          size_hint_x: .1
           id: volume_slider
+          size_hint_x: .1
           pos_hint: {'x':.90, 'y': 0}
           #width: '48dp'
           orientation: 'vertical'
+          cursor_image: 'atlas://data/images/defaulttheme/audio-volume-medium'
           on_value: root.change_volume(self.value)
 
-<SettingsScreen>:
-  name: 'settings'
+<ImageViewer>:
+  name: 'imageviewer'
+  fullscreen: True
+  Image:
+    source: root.source
+    size_hint: 1, 1
+    size: self.parent.size
 
-  BoxLayout:
-    Button:
-      text: "S"
-      bold: True
-      width: 100
-      on_release: 
-        root.manager.transition.direction = 'left'
-        root.manager.current = 'main'
-    BoxLayout:
-      size_hint_x: .5
-      orientation: "vertical"
-      Label:
-        text_size: self.size
-        halign: "left"
-        size_hint_y: None
-        height: 50
-        text: "List of Networks:"
-      Spinner:
-        id: wlan_list
-        size_hint_y: None
-        height: 50
-        text: "WLANs"
-        values: ("no", "values", "yet") 
-      Label:
-        text_size: self.size
-        size_hint_y: None
-        height: 50
-        halign: "left"
-        text: "List of Audio Cards:"
-      Spinner:
-        id: audio_list
-        size_hint_y: None
-        height: 50
-        text: "AudioCards"
-        values: ("no", "values", "yet") 
-      Label:
-        text_size: self.size
-        size_hint_y: None
-        height: 50
-        halign: "left"
-        text: "List of Bluetooth Devices:"
-      Spinner:
-        id: bluetooth_list
-        size_hint_y: None
-        height: 50
-        text: "Bluetooth Cards"
-        values: ("no", "values", "yet") 
+#<SaverScreen>:
+#  name: 'screensaver'
 
-    BoxLayout:
-
-      cols: 3
-      spacing: '8dp'
-      size_hint: .5, None
-
-      Label:
-        text: 'Checkbox'
-
-      CheckBox:
-        size_hint_y: None
-        height: '48dp'
-
-      CheckBox:
-        size_hint_y: None
-        height: '48dp'
-
-      Label:
-        text: 'CheckBox with group'
-
-      CheckBox:
-        size_hint_y: None
-        height: '48dp'
-        group: 'g2'
-
-      CheckBox:
-        size_hint_y: None
-        height: '48dp'
-        group: 'g2'
-
-<SaverScreen>:
-  name: 'screensaver'
-
+#<SettingsScreen>:
+#  name: 'settings'
+#
+#  BoxLayout:
+#    Button:
+#      text: "S"
+#      bold: True
+#      width: 100
+#      on_release: 
+#        root.manager.transition.direction = 'left'
+#        root.manager.current = 'main'
+#    BoxLayout:
+#      size_hint_x: .5
+#      orientation: "vertical"
+#      Label:
+#        text_size: self.size
+#        halign: "left"
+#        size_hint_y: None
+#        height: 50
+#        text: "List of Networks:"
+#      Spinner:
+#        id: wlan_list
+#        size_hint_y: None
+#        height: 50
+#        text: "WLANs"
+#        values: ("no", "values", "yet") 
+#      Label:
+#        text_size: self.size
+#        size_hint_y: None
+#        height: 50
+#        halign: "left"
+#        text: "List of Audio Cards:"
+#      Spinner:
+#        id: audio_list
+#        size_hint_y: None
+#        height: 50
+#        text: "AudioCards"
+#        values: ("no", "values", "yet") 
+#      Label:
+#        text_size: self.size
+#        size_hint_y: None
+#        height: 50
+#        halign: "left"
+#        text: "List of Bluetooth Devices:"
+#      Spinner:
+#        id: bluetooth_list
+#        size_hint_y: None
+#        height: 50
+#        text: "Bluetooth Cards"
+#        values: ("no", "values", "yet") 
+#
+#    BoxLayout:
+#
+#      cols: 3
+#      spacing: '8dp'
+#      size_hint: .5, None
+#
+#      Label:
+#        text: 'Checkbox'
+#
+#      CheckBox:
+#        size_hint_y: None
+#        height: '48dp'
+#
+#      CheckBox:
+#        size_hint_y: None
+#        height: '48dp'
+#
+#      Label:
+#        text: 'CheckBox with group'
+#
+#      CheckBox:
+#        size_hint_y: None
+#        height: '48dp'
+#        group: 'g2'
+#
+#      CheckBox:
+#        size_hint_y: None
+#        height: '48dp'
+#        group: 'g2'

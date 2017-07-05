@@ -1,483 +1,726 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""
+Diese Datei bildet das Hauptprogramm des mp3pi-Projekts.
+"""
 
-from kivy.app import App
-
-
-from kivy.uix.scatter import Scatter
-from kivy.uix.label import Label
-from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.textinput import TextInput
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.scrollview import ScrollView
-from kivy.uix.widget import Widget
-from kivy.properties import NumericProperty
-from kivy.graphics import Color
-from kivy.uix.screenmanager import ScreenManager, Screen, SwapTransition, FadeTransition
-from kivy.uix.settings import SettingsWithTabbedPanel
-from kivy.config import Config
-
-import pdb
-
+import os
+import sys
+import re
+import subprocess
 import threading
 import time
-import os
-import subprocess
-import sys
-import json
-import pprint
 import signal
-import re
+import select
+from functools import partial
 
-#from networking import NetworkManagerWrapper
+os.environ['KIVY_NO_FILELOG'] = '1'
+from kivy.app import App
+from kivy.config import Config
+from kivy.core.window import Window
+from kivy.graphics import Color
+from kivy.logger import Logger
+from kivy.uix.screenmanager import ScreenManager, Screen, NoTransition
+from kivy.uix.settings import SettingsWithTabbedPanel
+from kivy.uix.listview import ListView
+from kivy.properties import ObjectProperty
+from kivy.clock import Clock, mainthread
+
 from nmcli import nmcli
 from radiostations import RadioStations
-#from audio import AlsaInterface
 from screensaver import Rpi_ScreenSaver
+from imageviewer import ImageViewer
+
+from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+import markup
+
+import pdb
+import pprint
+
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
-import select
-
-import markup
-
-from kivy.logger import Logger
-from signal import SIGTSTP, SIGTERM, SIGABRT
-
-import string,cgi,time
-from os import curdir, sep
-from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 RootApp = "init"
 ConfigObject = None
+ImageViewerObject = None
+last_activity_time = 0
 
-class SaverScreen(Screen):
-  pass
+audio_interface = "pulse"
+'''Auswahl des Audio-Interface. "pulse" oder "alsa".'''
+
+if audio_interface == "alsa":
+  from audio import AlsaInterface
+
+
+class MyListView(ListView):
+
+  def scroll_to(self, index=0):
+    if not self.scrolling:
+      self.scrolling = True
+      self._index = index
+
+      #self.populate()
+      mstart = index * self.row_height
+      scroll_y = mstart / (self.container.height - self.height)
+      scroll_y = 1 - min(1, max(scroll_y, 0))
+      scrlv = self.container.parent
+      scrlv.scroll_y = scroll_y
+      scrlv._update_effect_y_bounds() # bug in ScrollView
+
+      self.dispatch('on_scroll_complete')
+
 
 class Mp3PiAppLayout(Screen):
+  """Die Kivy-Layoutklasse."""
 
-  global RootApp, last_activity_time, ConfigObject
+  global RootApp, ConfigObject, ImageViewerObject, last_activity_time, audio_interface
   
   isPlaying = False
-  proc = None
 
-  stop = threading.Event()
-  mythread = None
+  playerproc_stop = threading.Event()
+  playerthread = None
 
-  statusthread_stop = threading.Event()
+  statusproc_stop = threading.Event()
   statusthread = None
-
+  
+  last_selection_index = None
+  default_image = None
+  
+  # References to kv widgets
+  imageid = ObjectProperty(None)
+  wlanstatus = ObjectProperty(None)
+  search_results_list = ObjectProperty(None)
+  search_results_slider = ObjectProperty(None)
+  infotext = ObjectProperty(None)
+  volume_slider = ObjectProperty(None)
 
   def args_converter(self, row_index, an_obj):
+    """Argument-Konverter für den ListAdapter des ListView der Stationsliste.
+    
+    Eingabe ist der Zeilenindex row_index des zu konstruierenden
+    ListView-Elements und das Datenobjekt an_obj. Es enthält
+    das Dictionary mit Stationsdaten, wie es von der Klasse
+    Radiostations generiert wird.
+
+    Rückgabewert ist ein Dictionary, das zur Konstruktion des
+    ListItemButtonTitle verwendet wird.
+    """
+    name = an_obj['name']
     if row_index % 2:
       background = [1, 1, 1, 0]
     else:
       background = [1, 1, 1, .5]
 
-    return {'text': an_obj['name'],
-            'size_hint_y': None,
-            'deselected_color': background}
+    return {'text': name,
+            'deselected_color': background,
+#            'on_touch_down': partial(self.create_longtouch_clock, row_index),
+#            'on_touch_up': partial(self.delete_longtouch_clock, row_index)
+            }
+
+#  def create_longtouch_clock(self, index, widget, touch, *args):
+#    callback = partial(self.long_touch_event, index, touch)
+#    Clock.schedule_once(callback, 2)
+#    touch.ud['event'] = callback
+#
+#  def delete_longtouch_clock(self, index, widget, touch, *args):
+#    if 'event' in touch.ud:
+#      Clock.unschedule(touch.ud['event'])
+#
+#  def long_touch_event(self, index, touch, dt):
+#    print('LongTouch index={} pos={}'.format(index, touch.pos))
 
   def __init__(self, **kwargs):
-    global RootApp
+    global RootApp, audio_interface
     super(Mp3PiAppLayout, self).__init__(**kwargs)
     
     RootApp = self
+    
+    self.default_image = self.imageid.source
 
-    self.ids['search_results_list'].adapter.bind(on_selection_change=self.change_selection)
+    self.search_results_list.adapter.bind(on_selection_change=self.change_selection)
 
-    #self.ids.volume_slider.value = Alsa.get_mixer("", {})
+    try:
+      if audio_interface == "alsa":
+        vol = Alsa.get_volume("")
+      else:
+        vol = int(subprocess.check_output(["pulseaudio-ctl", "full-status"]).split(" ")[0])
+    except ValueError:
+      pass
+    else:
+      self.volume_slider.value = vol
 
-    # XXX validate!!
-    self.ids.volume_slider.value = int(subprocess.check_output(["pulseaudio-ctl", "full-status"]).split(" ")[0])
+    # Set up the draggable scrollbar    
+    scrlv = self.search_results_list.container.parent # The ListView's ScrollView
+    scrls = self.search_results_slider
+    scrlv.bind(scroll_y=partial(self.scroll_slider,scrls))
+    scrls.bind(value=partial(self.scroll_list,scrlv))
+    
+    self.start_status_thread()
 
+  def scroll_list(self, scrlv, scrls, value):
+    """Scrollen der Stationsliste.
+    
+    Gebunden an die value-Property des Stationslisten-Sliders in __init__.
+    """
+    scrlv.scroll_y = value
+    scrlv._update_effect_y_bounds() # bug in ScrollView
+  
+  def scroll_slider(self, scrls, scrlv, value):
+    """Scrollen des Stationslisten-Sliders.
+    
+    Gebunden an die scroll_y-Property der Stationsliste in __init__.
+    """
+    if value >= 0:
+    #this to avoid 'maximum recursion depth exceeded' error
+      scrls.value = value
 
-    self.statusthread = threading.Thread(target=self.status_thread)
+  def change_volume(self, value):
+    """Ändern der Lautstärke.
+    
+    Gebunden an die on_value-Property von volume_slider in mp3pi.kv
+    """
+    global audio_interface
+    vol = int(value)
+    if audio_interface == "alsa":
+      #os.system("amixer set Master %s%%" % vol)
+      #os.system("pactl set-sink-volume  bluez_sink.0C_A6_94_E3_76_DA %s%%" % vol)
+      Alsa.set_volume("", vol)
+    else:
+      os.system("pulseaudio-ctl set %s%%" % (vol))
+
+  def change_selection(self, adapter):
+    """Wechsel der Startionsauswahl.
+    
+    Gebunden an die on_selection_change-Property von search_results_list in __init__
+    """
+    global ConfigObject
+
+    if adapter.selection:
+      self.stop_player_thread()
+      station_name = adapter.selection[0].text
+      self.change_image(station_name)
+      self.start_player_thread(Stations.getStreamURLbyName(station_name))
+      ConfigObject.set('General', 'last_station', station_name)
+      ConfigObject.write()
+    else:
+      self.stop_player_thread()
+
+  def change_image(self, station_name):
+    """Wechsel des Stations-Bildes."""
+    imageUrl = Stations.getImageUrlByName(station_name) 
+    Logger.info("Mp3Pi GUI: Loading Image from %s" % (imageUrl))
+    self.imageid.source = imageUrl
+
+  def stop_player_thread(self):
+    """Beenden des Player-Thread.
+    
+    Setzt den playerproc_stop-Event und wartet auf Beendigung des
+    Player-Thread.
+    """
+    if self.isPlaying:
+      Logger.info("Mp3Pi GUI: stopping player")
+      if self.playerthread.isAlive(): 
+        Logger.info("Mp3Pi GUI: notifying player thread")
+        self.playerproc_stop.set()
+        self.playerthread.join(.3)
+      self.isPlaying = False
+    else:
+      Logger.info("Mp3Pi GUI: player already stopped")
+
+  def start_player_thread(self, streamURL):
+    """Starten des Player-Thread."""
+    if not self.isPlaying:
+      Logger.info("Mp3Pi GUI: starting player " + streamURL)
+      self.isPlaying = True
+      self.playerthread = threading.Thread(target=self.player_proc, args=(streamURL,))
+      self.playerthread.daemon = True
+      self.playerthread.start()
+    else:
+      Logger.info("Mp3Pi GUI: player already started")
+
+  def start_status_thread(self):
+    """Starten des Status-Thread."""
+    self.statusthread = threading.Thread(target=self.status_proc)
     self.statusthread.daemon = True
     self.statusthread.start()
 
-
-  def change_volume(self, args):
-    #os.system("amixer set Master %s%%" % int(args))
-    #os.system("pactl set-sink-volume  bluez_sink.0C_A6_94_E3_76_DA %s%%" % int(args))
-    #Alsa.set_mixer("", int(args), {})
-    os.system("pulseaudio-ctl set %s%%" % int(args))
-
-  def change_selection(self, args):
-    if args.selection:
-      self.change_image(args.selection[0].text)
-      self.stop_second_thread()
-      self.start_second_thread(Stations.getStreamURLbyName(args.selection[0].text))
-    else:
-      self.stop_second_thread()
-
-  def stop_second_thread(self):
-    if self.isPlaying == True: # stop playing
-      if self.proc is not None:
-        if self.mythread.isAlive(): 
-          print("set stop")
-          self.stop.set()    
-        #self.proc.kill() ??
-        Logger.info("mpg123: killing %s" % self.proc.pid)
-        os.kill(self.proc.pid, SIGTERM)
-        self.proc = None
-    self.isPlaying = False
-
-  def start_second_thread(self, l_text):
-    if self.isPlaying == False:
-      Logger.info("Player: starting player " + l_text)
+  @mainthread
+  def update_infotext(self, text):
+    """Update des infotext-Labels (im Mainthread)."""
+    self.infotext.text = text
       
-      self.isPlaying = True
-      self.mythread = threading.Thread(target=self.infinite_loop, args=(l_text,))
-      self.mythread.daemon = True
-      self.mythread.start()
-        
-    else:
-      Logger.info("Player: already playing")
+  @mainthread
+  def update_wlanstatus_text(self, text):
+    """Update des wlanstatus-Text (im Mainthread)."""
+    self.wlanstatus.text = text
       
-  def infinite_loop(self, url):
-    iteration = 0
+  @mainthread
+  def update_wlanstatus_icon(self, connection):
+    """Update des wlanstatus-Icons (im Mainthread)."""
+    lines = []
+    for i in self.wlanstatus.canvas.get_group(None)[1:]:
+      if type(i) is Color:
+        lines.append(i)
+        i.a = 1
+    
+    if connection is not None:
+      signal = int(connection['SIGNAL'])
+      if signal < 50:
+        for i in lines[0:3]:
+          i.a = .5
+      elif signal < 60:
+        for i in lines[0:2]:
+          i.a = .5
+      elif signal < 70:
+        for i in lines[0:1]:
+          i.a = .5
 
-    self.proc = subprocess.Popen(["mpg123", "-o", "pulse", "-@", url], stderr=subprocess.PIPE, bufsize = 0)
-  
+  @mainthread
+  def update_search_results_list(self):
+    """Update der search_result_list (im Mainthread)."""
+    del self.search_results_list.adapter.data[:]
+    self.search_results_list.adapter.data.extend(Stations.data)
+    station_name = ConfigObject.get('General','last_station')
+    if station_name is not None:
+      index = Stations.getIndexByName(station_name)
+      if index is not None:
+        self.last_selection_index = index
+
+  def player_proc(self, url):
+    """Routine des Player-Thread.
+    
+    mpg123 wird mit 'url' in einem Subprozess gestartet,
+    von diesem ausgegebene StreamTitles werden in das infotext-Label übertragen.
+
+    Der Thread kann durch Setzen des playerproc_stop-Events beendet werden.
+    """
+    global audio_interface
+    args = ["mpg123", "--no-control", "--list", url]
+    args.extend(["--output", audio_interface])
+    #args.extend(["--buffer", "2048"])
+    proc = subprocess.Popen(args, stderr=subprocess.PIPE, bufsize=0)
+    Logger.info("Player: started pid %s" % proc.pid)
+
     line = []
-    while True:
-      if self.stop.is_set():
-        Logger.info("Player: stopping thread")
-        self.stop.clear()
-        return
-     
-      while (select.select([self.proc.stderr], [], [], 0)[0]):
+    errorText = None
+    self.playerproc_stop.clear()
+    self.update_infotext('*** Starting ***')
 
-        # check if mpg123 is died
-        #print(self.proc.returncode)
-        #print(self.proc.pid)
-        if self.proc.returncode is not None:
-          print("died")
-          return
+    while not self.playerproc_stop.is_set():
 
-        if self.stop.is_set():
-          Logger.info("Player: stopping thread")
-          self.stop.clear()
-          return
+      while (not self.playerproc_stop.is_set()
+        and proc is not None
+        and select.select([proc.stderr], [], [], .1)[0]):
 
+        # check if mpg123 has died
+        if proc.returncode is not None:
+          errorText = "*** Player died ***"
+          self.playerproc_stop.set()
+          break
 
-        char = self.proc.stderr.read(1)
-        if char != '\n':
+        char = proc.stderr.read(1)
+        if char != "\n":
           line.append(char)
-        else:
-          line_joined = "".join(line)
+          continue
 
-          Logger.info("MPG123: says %s " % line_joined)
+        line_joined = "".join(line)
+
+        Logger.info("mpg123: %s" % line_joined)
+        
+        if 'Invalid playlist from http_open()' in line_joined:
+          errorText = "*** Error opening stream ***"
+          self.playerproc_stop.set()
+          break
           
-          if "ICY-META: StreamTitle=" in line_joined:
-            pairs = {}
-            elements = line_joined.split(";")
-            for element in elements:
-              if element:
-                res = re.search(r"([A-Za-z]*)='(.*)'", element)
-                pairs[res.group(1)] = res.group(2)
+        if "ICY-NAME: " in line_joined:
+          res = re.search(r"ICY-NAME: (.*)", line_joined)
+          if res is not None:
+            self.update_infotext(res.group(1))
 
-            self.ids.icytags.text = pairs['StreamTitle']
+        if "ICY-META: StreamTitle=" in line_joined:
+          #pairs = {}
+          #elements = line_joined.split(";")
+          #for element in elements:
+          #  if element:
+          #    res = re.search(r"([A-Za-z]*)='(.*)'", element)
+          #    pairs[res.group(1)] = res.group(2)
+          #self.update_infotext(pairs['StreamTitle'])
+          res = re.search(r"StreamTitle='(.*?)';", line_joined)
+          if res is not None:
+            self.update_infotext(res.group(1))
+          else:
+            self.update_infotext('')
 
-          
-          if "ICY-NAME: " in line_joined:
-            Logger.debug("ICYTAGS: ICY name found: %s " % line_joined.replace("ICY-NAME: ", ""))
+        #if "ICY-NAME: " in line_joined:
+        #  Logger.debug("ICYTAGS: ICY name found: %s " % line_joined.replace("ICY-NAME: ", ""))
+        #if "ICY-URL: " in line_joined:
+        #  Logger.debug("ICYTAGS: ICY url found: %s " % line_joined.replace("ICY-URL: ", ""))
+        #if "ICY-META: StreamTitle=" in line_joined:
+        #  Logger.debug("ICYTAGS: ICY StreamTitle found: %s " % line_joined.replace("ICY-META: StreamTitle=", ""))
 
-          if "ICY-URL: " in line_joined:
-            Logger.debug("ICYTAGS: ICY url found: %s " % line_joined.replace("ICY-URL: ", ""))
+        line = []
 
-          if "ICY-META: StreamTitle=" in line_joined:
-            Logger.debug("ICYTAGS: ICY StreamTitle found: %s " % line_joined.replace("ICY-META: StreamTitle=", ""))
-
-          line = []
-
-      iteration += 1
-      #print('Infinite loop, iteration {}.'.format(iteration))
       time.sleep(.1)
-  
-  def status_thread(self):
-    global ConfigObject
+
+    Logger.info("Player: stopping")
+    self.playerproc_stop.clear()
+
+    if errorText is None:
+      self.update_infotext('')
+    else:
+      self.update_infotext(errorText)
+      Logger.info("Player: " + errorText)
+
+    if proc is not None:
+      Logger.info("Player: killing pid %s" % proc.pid)
+      #proc.terminate()
+      #proc.kill()
+      os.kill(proc.pid, signal.SIGTERM)
+      proc = None
+
+  def status_proc(self):
+    """Routine des Status-Thread.
+    
+    Es wird in einer Endlosschleife der Status der Netzwerkverbindung
+    abgefragt und angezeigt, evtl. die Playlist geladen und in die
+    Stationsliste übertragen, und der Screensaver (de-)aktiviert.
+    """
+    global last_activity_time, ConfigObject, ImageViewerObject
     
     connection = NMCLI.current_connection() 
 
-    while True:
-      if self.statusthread_stop.is_set():
-        self.statusthread_stop.clear()
-        return
+    self.statusproc_stop.clear()
+    while not self.statusproc_stop.is_set():
 
-      if not int(time.time()) % 5:
+      if 0 == int(time.time()) % 5:
         connection = NMCLI.current_connection() 
-      
-      ip = NMCLI.get_ip()
 
-      if ip is None: 
-        self.ids.wlanstatus.text = "No network connection"
+      nowtime = time.strftime("%H:%M", time.localtime())
+      if connection is None: 
+        self.update_wlanstatus_text("No network connection\n%s" % (nowtime))
       else:
-        self.ids.wlanstatus.text = "%s %s%%\n%s\n%s" % (connection.get('SSID', None), connection.get('SIGNAL', None), ip, time.strftime("%H:%M", time.localtime()))
+        self.update_wlanstatus_text("%s %s%%\n%s\n%s" % (
+          connection.get('SSID', None),
+          connection.get('SIGNAL', None),
+          NMCLI.get_ip(),
+          nowtime))
 
-      #self.ids.wlanstatus.text = "%s %s%%\n%s" % ("myNetwork", Network.strength, "192.168.47.11")
-      
       # wlan symbol
-      lines = []
-      for i in self.ids.wlanstatus.canvas.get_group(None)[1:]:
-        if type(i) is Color:
-          lines.append(i)
-          i.a = 1
-      
-      if connection is not None:
-        if connection['SIGNAL'] < 50:
-          for i in lines[0:3]:
-            i.a = .5
-
-        if connection['SIGNAL'] < 60:
-          for i in lines[0:2]:
-            i.a = .5
-
-        if connection['SIGNAL'] < 70:
-          for i in lines[0:1]:
-            i.a = .5
+      self.update_wlanstatus_icon(connection)
         
-
-      if Stations.no_data == True:
-        print("no data")
-        if ConfigObject.get('General', 'playlist') == "radio.de":
-          Stations.update()
-          if Stations.no_data == False:
-            del self.search_results.adapter.data[:]
-            self.search_results.adapter.data.extend((Stations.data))
-        if ConfigObject.get('General', 'playlist') == "custom":
-          Stations.load_playlist("custom")
-          if Stations.no_data == False:
-            del self.search_results.adapter.data[:]
-            self.search_results.adapter.data.extend((Stations.data))
+      # station list
+      if Stations.no_data:
+        Logger.info("Status: loading playlist")
+        self.update_infotext('*** Loading playlist ***')
+        playlist = ConfigObject.get('General', 'playlist')
+        Stations.load_playlist(playlist)
+        if not Stations.no_data:
+          Logger.info("Status: {} entries loaded".format(len(Stations.data)))
+          self.update_search_results_list()
+        self.update_infotext('')
       
       # screensaver
-      timeout = ConfigObject.get('General', 'screensaver')
-      if timeout < 60:
-        timeout = 60
+      timeout = max(30, int(ConfigObject.get('General', 'screensaver')))
 
-      if (time.time() - last_activity_time) > int(timeout):
-        if ScreenSaver.display_state is True:
-          Logger.info("ScreenSaver: enabling screensaver")
-          self.manager.current = 'screensaver'
-          ScreenSaver.display_off()
+      if (time.time() - last_activity_time) > timeout:
+        if self.manager.current == 'main':
+          Logger.info("Status: enabling screensaver")
+          #self.manager.current = 'screensaver'
+          self.manager.current = 'imageviewer'
+          if ImageViewerObject.interval != 0:
+            ImageViewerObject.start()
+          else:
+            ScreenSaver.display_off()
       else:
-        if ScreenSaver.display_state is False:
-          Logger.info("ScreenSaver: disabling screensaver")
+        if self.manager.current != 'main':
+          Logger.info("Status: disabling screensaver")
+          if ImageViewerObject.interval != 0:
+            ImageViewerObject.stop()
+          else:
+            ScreenSaver.display_on()
           self.manager.current = 'main'
-          ScreenSaver.display_on()
       
       time.sleep(.5)
-    
-  def change_image(self, station_name):
-    imageUrl = Stations.getImageUrl(Stations.getIdByName(station_name)) 
-    Logger.info("ImageLoader: Loading Image from %s" % (imageUrl))
-    self.ids.imageid.source = imageUrl    
+
+    Logger.info("Status: stopping")
+    self.statusproc_stop.clear()
+
+  def jump_to_index(self, index):
+    """Zum index-ten Eintrag der Stationsliste springen und ihn auswählen."""
+    self.search_results_list.scroll_to(index)
+    self.search_results_list.adapter.get_view(index).trigger_action(duration=0)
 
   def pause(self):
-    self.stop.set()
-    self.search_results.adapter.deselect_list(self.search_results.adapter.selection)
+    """on_release-Callback des Pause/Play-Button; s. mp3pi.kv"""
+    if self.isPlaying:
+      self.stop_player_thread()
+      self.last_selection_index = self.search_results_list.adapter.selection[0].index
+      self.search_results_list.adapter.deselect_list(self.search_results_list.adapter.selection)
+      self.imageid.source = self.default_image
+    else:
+      if self.last_selection_index is not None:
+        self.jump_to_index(self.last_selection_index)
 
   def next(self):
-    self.stop.set()
-    #browse(self.search_results.adapter)
-    if self.search_results.adapter.selection:
-      index = self.search_results.adapter.selection[0].index
-      if index < len(self.search_results.adapter.data):
-        self.search_results.adapter.get_view(index+1).trigger_action(duration=0)
+    """on_release-Callback des Next-Button; s. mp3pi.kv"""
+    self.stop_player_thread()
+    if self.search_results_list.adapter.selection:
+      index = self.search_results_list.adapter.selection[0].index
+      if index < len(self.search_results_list.adapter.data):
+        self.jump_to_index(index+1)
 
   def prev(self):
-    self.stop.set()
-    if self.search_results.adapter.selection:
-      index = self.search_results.adapter.selection[0].index
+    """on_release-Callback des Previous-Button; s. mp3pi.kv"""
+    self.stop_player_thread()
+    if self.search_results_list.adapter.selection:
+      index = self.search_results_list.adapter.selection[0].index
       if index >= 1:
-        self.search_results.adapter.get_view(index-1).trigger_action(duration=0)
-
+        self.jump_to_index(index-1)
+        
   def poweroff(self):
-    print("poweroff")
+    """on_release-Callback des Poweroff-Button; s. mp3pi.kv"""
+    Logger.info("Mp3Pi GUI: poweroff")
     os.system("poweroff")
 
   def reboot(self):
-    print("reboot")
+    """on_release-Callback des Reboot-Button; s. mp3pi.kv"""
+    Logger.info("Mp3Pi GUI: reboot")
     os.system("reboot")
 
+  def quit(self):
+    """on_release-Callback des Quit-Button; s. mp3pi.kv"""
+    Logger.info("Mp3Pi GUI: quit")
+    App.get_running_app().stop()
+
+
 class Mp3PiApp(App):
-  global last_activity_time, ConfigObject
-
-  def build_config(self, config):
-    config.setdefaults('General', {'screensaver': "60"})
-    config.setdefaults('General', {'name': "name"})
-    config.setdefaults('General', {'playlist': "radio.de"})
-
-  def build_settings(self, settings):
-    settings.add_json_panel("General", self.config, data="""
-      [
-        {"type": "numeric",
-          "title": "Screensaver Timeout",
-          "section": "General",
-          "key": "screensaver"
-        },
-        {"type": "string",
-          "title": "String",
-          "section": "General",
-          "key": "name"
-        },
-        {"type": "options",
-          "title": "Playlist",
-          "section": "General",
-          "options": ["radio.de", "custom"],
-          "key": "playlist"
-        }
-      ]"""
-    )
-
-  def on_stop(self):
-    # The Kivy event loop is about to stop, set a stop signal;
-    # otherwise the app window will close, but the Python process will
-    # keep running until all secondary threads exit.
-    
-    #layout.clear_widgets()
-    #browse(self)
-    True
-
-    #main = self.root.manager.get_screen('main').layout
-    #main.stop.set()
-    #self.root.stop.set()
-
-    #self.root.statusthread_stop.set()
+  """Die Kivy-Applikationsklasse."""
+  global last_activity_time, ConfigObject, ImageViewerObject
+  #global ScreenSaver
 
   def build(self):
-    global last_activity_time, ConfigObject
-    #sm = ScreenManager(transition=FadeTransition())
+    """Kivy build() Override Methode."""
+    global last_activity_time, ConfigObject, ImageViewerObject
+    #global ScreenSaver
     
     self.settings_cls = MySettingsWithTabbedPanel
 
-    from kivy.core.window import Window
-#    Window.size = (800, 480)
-    
+    #Window.size = (800, 480)
+
     def on_motion(self, etype, motionevent):
       global last_activity_time
+      #global ScreenSaver
       last_activity_time = time.time()
+      ## Catch 1st touch when screensaver is active
+      #if ScreenSaver.display_state is False:
+      #  return(True)
     Window.bind(on_motion=on_motion)
 
     ConfigObject = self.config
 
-    sm = ScreenManager()
+    sm = ScreenManager(transition=NoTransition())
     sm.add_widget(Mp3PiAppLayout())
-    sm.add_widget(SettingsScreen())
-    sm.add_widget(SaverScreen())
-    return sm
-    #return Mp3PiAppLayout()
+    #sm.add_widget(SettingsScreen())
+    #sm.add_widget(SaverScreen())
+    ImageViewerObject = ImageViewer()
+    sm.add_widget(ImageViewerObject)
+    return(sm)
 
-class SettingsScreen(Screen):
-  def __init__(self, **kwargs):
-    super(SettingsScreen, self).__init__(**kwargs)
-    networklist = []
-#    for net in Network.visible_aps:
-#      networklist.append(net['ssid'])
-#      if net['ssid'] is Network.ssid:
-#        self.ids['wlan_list'].text = net[Network.ssid]
+  def build_config(self, config):
+    """Kivy App.build_config() Override Methode."""
+    config.setdefaults('General', {'screensaver': "30"})
+    config.setdefaults('General', {'image_turnaround': "30"})
+    #config.setdefaults('General', {'name': "name"})
+    config.setdefaults('General', {'playlist': "radio.de"})
+    config.setdefaults('General', {'last_station': None})
 
-#    self.ids['wlan_list'].values = networklist
-#    self.ids['wlan_list'].bind(text=self.change_wlan_selection)
+  def build_settings(self, settings):
+    """Kivy App.build_settings() Override Methode."""
+    settings.add_json_panel("General", self.config, data="""
+      [
+        {"type"   : "numeric",
+         "title"  : "Screensaver Timeout",
+         "section": "General",
+         "key"    : "screensaver"
+        },
+        {"type"   : "numeric",
+         "title"  : "ImageViewer Turnaround",
+         "section": "General",
+         "key"    : "image_turnaround"
+        },
+        {"type"   : "options",
+         "title"  : "Playlist",
+         "section": "General",
+         "options": ["radio.de", "custom", "favorites"],
+         "key"    : "playlist"
+        }
+      ]"""
+#        {"type"   : "string",
+#         "title"  : "String",
+#         "section": "General",
+#         "key"    : "name"
+#        },
+    )
 
-  def change_wlan_selection(self, spinner, args):
-    Logger.info("WLAN: user selection %s" % args)
-#    Logger.info("WLAN: current WLAN %s" % Network.ssid)
+  def on_stop(self):
+    """Kivy App.on_stop Event."""
+    # The Kivy event loop is about to stop, set a stop signal;
+    # otherwise the app window will close, but the Python process will
+    # keep running until all secondary threads exit.
+    global RootApp
 
-#    if args != Network.ssid:
-#      Logger.info("WLAN: changing WLAN to %s" % args)
-#      Network.activate([args])
-
-
-def signal_handler(signal, frame):
-  print("exit");
-  sys.exit(0);
-
-class HTTPHandler(BaseHTTPRequestHandler):
-  global RootApp
-
-  #print(Mp3PiAppClass)
-  def do_GET(self):
-    if self.path == "/":
-      
-      self.page = markup.page()
-      self.page.init(title="Title")
-      
-      self.page.table(border="true")
-
-      firstline = True
-      for row in RootApp.search_results.adapter.data:
-        if firstline is True:
-          self.page.tr()
-          for column in row:
-            #pdb.set_trace()
-            string1 = column
-            if type(column) == 'float':
-              string1 = str(column)
-            if type(column) == 'str':
-              string1 = unicode(column, "utf8")
-            self.page.th(string1, align="left")
-          self.page.tr.close()
-          firstline = False
-          continue
-
-        self.page.tr()
-        for column in row:
-          #pdb.set_trace()
-          string1 = row[column]
-          if type(row[column]) == 'float':
-            string1 = str(row[column])
-          if type(row[column]) == 'str':
-            string1 = unicode(row[column], "utf8")
-          self.page.td(string1)
-        self.page.tr.close()
-
-      self.page.p(time.time())
-        
-      
-      self.send_response(200)
-      self.send_header('Content-type',  'text/html')
-      self.end_headers()
-      self.wfile.write(RootApp.isPlaying)
-      self.wfile.write(self.page)
-      #self.wfile.write(json.dumps(RootApp.search_results.adapter.data, indent=4, separators=('.', ': ')))
-    else:
-      print(self.path)
+    Logger.info("Mp3PiApp: shutting down")
+    RootApp.playerproc_stop.set()
+    RootApp.statusproc_stop.set()
+    ScreenSaver.display_on()
 
 
 class MySettingsWithTabbedPanel(SettingsWithTabbedPanel):
+  """Die Settings-Klasse.
+  
+  Wird verwendet, um bei Änderung der Playlist-Einstellung das
+  no_data-Attribute auf True zu setzen.
+  """
   def on_close(self):
-    Logger.info("main.py: MySettingsWithTabbedPanel.on_close")
+    Logger.info("Mp3PiApp.py: MySettingsWithTabbedPanel.on_close")
 
   def on_config_change(self, config, section, key, value):
     if key == "playlist":
       Stations.no_data = True
+    elif key == "image_turnaround":
+      ImageViewerObject.interval = max(0, int(value))
     Logger.info(
-      "main.py: MySettingsWithTabbedPanel.on_config_change: "
+      "Mp3PiApp.py: MySettingsWithTabbedPanel.on_config_change: "
       "{0}, {1}, {2}, {3}".format(config, section, key, value))
 
 
-if __name__ == "__main__":
-  signal.signal(signal.SIGINT, signal_handler)
+class SaverScreen(Screen):
+  pass
 
-  #Network = NetworkManagerWrapper()
-  NMCLI = nmcli() 
-  #Alsa = AlsaInterface()
-  Stations = RadioStations()
-  ScreenSaver = Rpi_ScreenSaver()
 
-  ScreenSaver.display_on()
-  
+#class SettingsScreen(Screen):
+#  def __init__(self, **kwargs):
+#    super(SettingsScreen, self).__init__(**kwargs)
+#    networklist = []
+##    for net in Network.visible_aps:
+##      networklist.append(net['ssid'])
+##      if net['ssid'] is Network.ssid:
+##        self.ids['wlan_list'].text = net[Network.ssid]
+#
+##    self.ids['wlan_list'].values = networklist
+##    self.ids['wlan_list'].bind(text=self.change_wlan_selection)
+#
+#  def change_wlan_selection(self, spinner, args):
+#    Logger.info("WLAN: user selection %s" % args)
+##    Logger.info("WLAN: current WLAN %s" % Network.ssid)
+#
+##    if args != Network.ssid:
+##      Logger.info("WLAN: changing WLAN to %s" % args)
+##      Network.activate([args])
 
+
+class HTTPHandler(BaseHTTPRequestHandler):
+  """Der Requesthandler des HTTP-Servers."""
+
+  global RootApp, ConfigObject
+
+  def do_GET(self):
+    if self.path != "/":
+      print(self.path)
+      return
+
+    self.page = markup.page()
+    self.page.init(title="RaspPi Radio")
+
+    self.page.p('Time is %s' % time.ctime())
+    if RootApp.isPlaying:
+      self.page.p('Playing %s' % ConfigObject.get('General','last_station'))
+    else:
+      self.page.p('not playing')
+
+    isFirstline = True
+    self.page.table(border="true")
+    for row in RootApp.search_results_list.adapter.data:
+      self.page.tr()
+      if isFirstline:
+        for column in row:
+          if type(column) == 'float':
+            string1 = str(column)
+          elif type(column) == 'str':
+            string1 = unicode(column, "utf8")
+          else:
+            string1 = column
+          self.page.th(string1, align="left")
+        isFirstline = False
+      else:
+        for column in row:
+          if type(row[column]) == 'float':
+            string1 = str(row[column])
+          elif type(row[column]) == 'str':
+            string1 = unicode(row[column], "utf8")
+          else:
+            string1 = row[column]
+          self.page.td(string1)
+      self.page.tr.close()
+    self.page.table.close()
+
+    self.send_response(200)
+    self.send_header('Content-type', 'text/html')
+    self.end_headers()
+    self.wfile.write(self.page)
+    #self.wfile.write(json.dumps(RootApp.search_results_list.adapter.data, indent=4, separators=('.', ': ')))
+
+
+def start_httpserver_thread():
+  """Starten des HTTP-Servers auf Port 8080 in einem eigenen Thread."""
   httpd = HTTPServer(('', 8080), HTTPHandler)
   httpd_thread = threading.Thread(target=httpd.serve_forever)
   httpd_thread.daemon = True
   httpd_thread.start()
 
+def check_audio_device():
+  rc = os.system("pactl list sinks")
+  if audio_interface == "alsa":
+    if rc == 0:
+      print("ALSA configured - Pulseaudio is running")
+      rc = 1
+    else:
+      rc = os.system("aplay -l")
+  elif audio_interface != "pulse":
+    rc = 1
+  if rc != 0:
+    print("Audio device not configured correctly")
+    sys.exit(1)
+
+def signal_handler(signal, frame):
+  """Der Signalhandler.
+  
+  Gebunden an SIGINT im Hauptprogramm.
+  """
+  print("Signal {} received".format(signal))
+  App.get_running_app().stop()
+  sys.exit(0);
+
+
+if __name__ == "__main__":
+  signal.signal(signal.SIGINT, signal_handler)
+
+  NMCLI = nmcli()
+  
+  check_audio_device()
+  if audio_interface == "alsa":
+    Alsa = AlsaInterface()
+
+  Stations = RadioStations()
+
+  ScreenSaver = Rpi_ScreenSaver()
+  ScreenSaver.display_on()
+  
+  start_httpserver_thread()
+
   last_activity_time = time.time()
 
   Mp3PiApp().run()
-
 
