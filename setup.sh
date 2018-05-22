@@ -118,6 +118,13 @@ systemctl enable pulseaudio
 cp ~/.kivy/config.ini ~/.kivy/config.orig
 cp assets/kivy.ini ~/.kivy/config.ini
 
+# configure hostname
+echo "raspiradio" > /etc/hostname
+sed -i "s/127.0.1.1.*raspberrypi/127.0.1.1\traspiradio/g" /etc/hosts
+
+# disable auto exit in pulseaudio
+echo "exit-idle-time = -1" >> /etc/pulse/daemon.conf
+
 # Reboot
 echo "Done."
 echo
