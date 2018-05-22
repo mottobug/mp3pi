@@ -113,6 +113,7 @@ cp pulseaudio.service /etc/systemd/system
 # enable systemd service
 systemctl enable mp3pi
 systemctl enable pulseaudio
+systemctl enable ssh
 
 # configure kivy for touch
 cp ~/.kivy/config.ini ~/.kivy/config.orig
