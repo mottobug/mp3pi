@@ -6,40 +6,19 @@ apt-get install libbluetooth-dev bc pulseaudio
 
 pip install pyalsaaudio pybluez python-networkmanager pygments
 
-## Requirements on Raspberry Pi:
+# Installation on Debian 9:
+
+```
+git clone https://github.com/mottobug/mp3pi
+cd mp3pi
+./setup.sh
+```
 
 (from https://kivy.org/docs/installation/installation-rpi.html)
-
-```
-apt-get install libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
-   pkg-config libgl1-mesa-dev libgles2-mesa-dev \
-   python-setuptools libgstreamer1.0-dev git-core \
-   gstreamer1.0-plugins-{bad,base,good,ugly} \
-   gstreamer1.0-{omx,alsa} python-dev cython
-
-apt-get install python-pip libjpeg-dev python-dbus pulseaudio-utils pulseaudio mtdev-tools libbluetooth-dev bc network-manager
-
-#pip install --upgrade Cython==0.23
-pip install --upgrade Cython
-pip install git+https://github.com/kivy/kivy.git@master
-```
 
 ## Turn auto exit in pulseaudio off
 ```
 echo "exit-idle-time = -1" >> /etc/pulse/daemon.conf
-```
-
-Install recent version of mpg123:
-```
-apt-get install libpulse-dev
-wget https://www.mpg123.de/download/mpg123-1.25.0.tar.bz2
-tar xvjf mpg123-1.25.0.tar.bz2
-cd mpg123...
-./configure --with-audio=pulse
-make -j4
-make install
-echo "/usr/local/lib" > /etc/ld.so.conf.d/locallib.conf
-ldconfig
 ```
 
 Modifications on ~/.kivy/config.ini
