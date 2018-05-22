@@ -34,6 +34,10 @@ cd mp3pi
 ## Wifi connect to AP:
   nmcli device wifi connect "SSID" password "WLANPSK"
 
+## Wifi connect to hidden AP:
+  nmcli c add type wifi con-name <conname> ifname wlan0 ssid <hiddenssid>
+  nmcli device wifi connect "SSID" password "WLANPSK" hidden yes
+
 
 ## Play with custom Playlists
 ```
